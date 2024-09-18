@@ -13,14 +13,15 @@ from scipy.io import loadmat
 from model import CVCNN
 
 # Determine experiment name and create its directory
-exp_name = "test"
+exp_name = "cvcnn_mnm"
+# exp_name = "test"
 
 add_folder = os.path.join("")
 curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:6"
+device = "cuda:3"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -179,8 +180,9 @@ def param_init(model):
 param_init(model)
 
 # Train type shows which algorithm is used for optimization.
-train_type='sgd_auto' # gradient-based optimizer.
-# train_type='mnm_lev_marq' # Levenberg-Marquardt on base of Mixed Newton. Work only with models with complex parameters!
+# train_type='sgd_auto' # gradient-based optimizer.
+train_type='mnm_lev_marq' # Levenberg-Marquardt on base of Mixed Newton. Work only with models with complex parameters!
+# train_type='ls' # LS method: 1 Mixed-Newton step
 learning_curve, best_criterion = train(model, train_dataset, loss, quality_criterion, config_train, batch_to_tensors, validate_dataset, test_dataset, 
                                        train_type=train_type, chunk_num=chunk_num, exp_name=exp_name, save_every=10, save_path=save_path, 
                                        weight_names=weight_names, device=device)

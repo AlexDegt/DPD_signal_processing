@@ -20,7 +20,7 @@ curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:6"
+device = "cuda:3"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -100,8 +100,6 @@ train_dataset, validate_dataset, test_dataset = dataset
 # Good performance for channel B is -20.5 - -21.0 dB.
 def batch_to_tensors(a):
     x = a[0]
-    print(a[0].size())
-    print(a[1].size())
     d = a[1][:, :1, :]
     nf = a[1][:, 2:, :]
     return x, d, nf
@@ -109,7 +107,7 @@ def batch_to_tensors(a):
 def complex_mse_loss(d, y, model):
     error = (d - y)[..., pad_zeros: -pad_zeros]
     # error = (d - y)
-    return error.abs().square().sum() + alpha * sum(torch.norm(p)**2 for p in model.parameters())
+    return error.abs().square().sum() # + alpha * sum(torch.norm(p)**2 for p in model.parameters())
 
 def loss(model, signal_batch):
     x, y, _ = batch_to_tensors(signal_batch)
@@ -182,7 +180,8 @@ param_init(model)
 
 # Train type shows which algorithm is used for optimization.
 # train_type='sgd_auto' # gradient-based optimizer.
-train_type='mnm_lev_marq' # Levenberg-Marquardt on base of Mixed Newton. Work only with models with complex parameters!
+# train_type='mnm_lev_marq' # Levenberg-Marquardt on base of Mixed Newton. Work only with models with complex parameters!
+train_type='ls' # LS method: 1 Mixed-Newton step
 learning_curve, best_criterion = train(model, train_dataset, loss, quality_criterion, config_train, batch_to_tensors, validate_dataset, test_dataset, 
                                        train_type=train_type, chunk_num=chunk_num, exp_name=exp_name, save_every=1, save_path=save_path, 
                                        weight_names=weight_names, device=device)
