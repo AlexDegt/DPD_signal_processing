@@ -22,11 +22,12 @@ def train_mixed_newton_levenb_marq(model: nn.Module, train_dataset: DataLoaderTy
                                    save_path: OptionalStr = None, exp_name: OptionalStr = None, save_every: OptionalInt = None, 
                                    save_signals: bool = False, weight_names: StrOrList = None):
     """
-    Function implements damped version of Mixed Newton Method. Mixed Newton implies computation of the mixed Hessian and
-    gradient multiplication each algorithm step. Current function uses oracle.Oracle.direction_through_jacobian
-    function which firstly accumulates model output jacobian J w.r.t. the model parameters on the whole batch, then 
-    calculates Hessian as matrix multiplication (J^H @ J). Gradient is calculated as vector-jacobian multiplication
-    (J^H @ e), where e - model error on current batch. 
+    Function implements Mixed Newton Method with Levenberg-Mrquardt adaptive regularization control. 
+    Mixed Newton implies computation of the mixed Hessian and gradient multiplication each algorithm step. 
+    Current function uses oracle.Oracle.direction_through_jacobian function which firstly accumulates 
+    model output jacobian J w.r.t. the model parameters on the whole batch, then calculates Hessian as matrix 
+    multiplication (J^H @ J). Gradient is calculated as vector-jacobian multiplication (J^H @ e), 
+    where e - model error on current batch. 
     
     Attention!
     Mixed Newton performs better on the long batches - with big sample size. Batch size could be chosen as 1.
@@ -148,7 +149,7 @@ def train_mixed_newton_levenb_marq(model: nn.Module, train_dataset: DataLoaderTy
         regul = torch.eye(hess.size()[0], device=hess.device)
         hess_cond = torch.linalg.cond(hess).item()
 
-        # Calculate and apply Levenberg-Marquardt algorithm step with mixed hessia
+        # Calculate and apply Levenberg-Marquardt algorithm step with mixed hessian
         flag = True
         while flag:
             hess_inv = torch.linalg.pinv(hess + alpha*maxH*regul, rcond=1e-40, hermitian=True)
