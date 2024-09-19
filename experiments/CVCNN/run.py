@@ -11,7 +11,9 @@ from trainer import train
 from utils import dataset_prepare
 from scipy.io import loadmat
 from model import CVCNN
+print(torch.cuda.is_available())
 
+#%%
 # Determine experiment name and create its directory
 # exp_name = "mnm_damped_layers_4_channels_3_ker_size_3_act_sigmoid"
 # exp_name = "newton_lev_marq_layers_4_channels_3_ker_size_3_act_sigmoid_full_chunk_3000_epochs_1_sim"
@@ -25,7 +27,7 @@ curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:4"
+device = "cuda:0"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -40,8 +42,8 @@ if device != "cpu":
 mat = loadmat("../../data/data2d.mat")
 
 # Define data type
-# dtype = torch.complex64
-dtype = torch.complex128
+dtype = torch.complex64
+# dtype = torch.complex128
 
 # Number of output channels of each convolutional layer.
 # out_channels = [1, 1]
@@ -64,7 +66,7 @@ slot_num = 10
 # Elements of train_slots_ind, test_slots_ind must be higher than 0 and lower, than slot_num
 # In full-batch mode train, validation and test dataset are the same.
 # In mini-batch mode validation and test dataset are the same.
-train_slots_ind, validat_slots_ind, test_slots_ind = range(8), range(8), range(8, 10)
+train_slots_ind, validat_slots_ind, test_slots_ind = range(1), range(1), range(9, 10)
 # train_slots_ind, validat_slots_ind, test_slots_ind = range(1), range(1), range(1)
 delay_d = 0
 # batch_size == None is equal to batch_size = 1.
@@ -73,7 +75,7 @@ delay_d = 0
 batch_size = 1
 chunk_num = 1
 # chunk_size = int(213504/chunk_num)
-chunk_size = int(0.8 * 213500/chunk_num)
+chunk_size = int(1 * 21350/chunk_num)
 # L2 regularization parameter
 alpha = 0.0
 # Configuration file
@@ -94,6 +96,7 @@ train_dataset, validate_dataset, test_dataset = dataset
 #     for j, batch in enumerate(dataset[i]):
 #         # if j == 0:
 #         print(batch[0].size())
+#         print(batch[0][0, :, 1000:1005])
 #         print(batch[1].size())
 #     print(j)
 # sys.exit()
@@ -157,10 +160,11 @@ model.to(device)
 
 weight_names = list(name for name, _ in model.state_dict().items())
 
-print(f"Current model parameters number is {count_parameters(model)}")
-param_names = [name for name, p in model.named_parameters()]
-params = [(name, p.size(), p.dtype) for name, p in model.named_parameters()]
+# print(f"Current model parameters number is {count_parameters(model)}")
+# param_names = [name for name, p in model.named_parameters()]
+# params = [(name, p.size(), p.dtype) for name, p in model.named_parameters()]
 # print(params)
+# sys.exit()
 
 def param_init(model):
     branch_num = len(delays)
