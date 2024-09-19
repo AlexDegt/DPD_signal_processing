@@ -1,9 +1,7 @@
 import torch
 from torch import nn, Tensor
 from typing import List, Tuple, Union, Callable, Iterable
-from .algorithms import train_mixed_newton_damped, train_mixed_newton_levenb_marq, \
-                        train_sgd_auto, train_sgd_manual, train_newton_damped, \
-                        train_newton_levenb_marq, train_cubic_newton, train_cubic_newton_simplified
+from .algorithms import train_mixed_newton_levenb_marq, train_sgd_auto
 
 OptionalInt = Union[int, None]
 OptionalStr = Union[str, None]
@@ -84,32 +82,8 @@ def train(model: nn.Module, train_dataset: DataLoaderType, loss_fn: LossFnType, 
         learning_curve, best_criterion = train_sgd_auto(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
                                                         quality_criterion, batch_to_tensors, config_train, save_path, exp_name,
                                                         save_every)
-    elif train_type == 'sgd_manual':
-        learning_curve, best_criterion = train_sgd_manual(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
-                                                          quality_criterion, batch_to_tensors, save_path, exp_name, save_every, 
-                                                          save_signals, weight_names)
-    elif train_type == 'mnm_damped':
-        learning_curve, best_criterion = train_mixed_newton_damped(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
-                                                                   quality_criterion, batch_to_tensors, chunk_num, 
-                                                                   save_path, exp_name, save_every, save_signals, weight_names)
     elif train_type == 'mnm_lev_marq':
         learning_curve, best_criterion = train_mixed_newton_levenb_marq(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
-                                                                        quality_criterion, batch_to_tensors, chunk_num, 
-                                                                        save_path, exp_name, save_every, save_signals, weight_names)
-    elif train_type == 'newton_damped':
-        learning_curve, best_criterion = train_newton_damped(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
-                                                                   quality_criterion, batch_to_tensors, chunk_num, 
-                                                                   save_path, exp_name, save_every, save_signals, weight_names)
-    elif train_type == 'newton_lev_marq':
-        learning_curve, best_criterion = train_newton_levenb_marq(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
-                                                                        quality_criterion, batch_to_tensors, chunk_num, 
-                                                                        save_path, exp_name, save_every, save_signals, weight_names)
-    elif train_type == 'cubic_newton':
-        learning_curve, best_criterion = train_cubic_newton(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
-                                                                   quality_criterion, batch_to_tensors, chunk_num, 
-                                                                   save_path, exp_name, save_every, save_signals, weight_names)
-    elif train_type == 'cubic_newton_simple':
-        learning_curve, best_criterion = train_cubic_newton_simplified(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
                                                                         quality_criterion, batch_to_tensors, chunk_num, 
                                                                         save_path, exp_name, save_every, save_signals, weight_names)
     else:

@@ -177,9 +177,6 @@ def train_mixed_newton_levenb_marq(model: nn.Module, train_dataset: DataLoaderTy
         grad_norm_curve.append(grad_norm)
         weights_norm_curve.append(torch.norm(curr_params).item())
 
-        if epoch > 290 and epoch <= 315:
-            torch.save(model.state_dict(), save_path + f'weights_{epoch}')
-
         hess_inv.detach()
         hess.detach()
         grad.detach()
