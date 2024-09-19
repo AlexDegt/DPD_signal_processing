@@ -1,7 +1,8 @@
 import torch
 from torch import nn, Tensor
 from typing import List, Tuple, Union, Callable, Iterable
-from .algorithms import train_mixed_newton_levenb_marq, train_sgd_auto
+from .algorithms import train_sgd_auto, train_mixed_newton_levenb_marq,train_ls
+
 
 OptionalInt = Union[int, None]
 OptionalStr = Union[str, None]
@@ -44,10 +45,8 @@ def train(model: nn.Module, train_dataset: DataLoaderType, loss_fn: LossFnType, 
             Attention! Test dataset must have only 1 batch containing whole signal, the same as for validation dataset.
             Defaults is "None".
         train_type - flag, that shows which algorithm to exploit in training.
-            train_type == 'mnm_damped', - corresponds to Damped Mixed Newton Method,
             train_type == 'mnm_lev_marq', - corresponds to Levenberg–Marquardt algorithm on base of Mixed Newton Method,
             train_type == 'sgd_auto', - corresponds to Stochastic Gradient Descent, implemented by means of loss.backward() function.
-            train_type == 'sgd_manual', - corresponds to Stochastic Gradient Descent, implemented by means of pytorch jacobian function.
         save_path (str, optional): Folder path to save function product. Defaults to "None".
         exp_name (str, optional): Name of simulation, which is reflected in function product names. Defaults to "None".
         save_every (int, optional): The number which reflects following: the results would be saved every save_every epochs.
@@ -81,11 +80,16 @@ def train(model: nn.Module, train_dataset: DataLoaderType, loss_fn: LossFnType, 
     if train_type == 'sgd_auto':
         learning_curve, best_criterion = train_sgd_auto(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
                                                         quality_criterion, batch_to_tensors, config_train, save_path, exp_name,
-                                                        save_every)
+                                                        save_every, weight_names)
     elif train_type == 'mnm_lev_marq':
         learning_curve, best_criterion = train_mixed_newton_levenb_marq(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
                                                                         quality_criterion, batch_to_tensors, chunk_num, 
                                                                         save_path, exp_name, save_every, save_signals, weight_names)
+    elif train_type == 'ls':
+        learning_curve, best_criterion = train_ls(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
+                                                                        quality_criterion, batch_to_tensors, chunk_num, 
+                                                                        save_path, exp_name, weight_names)
+
     else:
         print(f"Attention! Training type \'{train_type}\' doesn`t match any of the possible types: \'sgd\', \'mnm\'.")
     return learning_curve, best_criterion
