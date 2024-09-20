@@ -51,7 +51,7 @@ def train_sgd_auto(model: nn.Module, train_dataset: DataLoaderType, validate_dat
     Returns:
         Learning curve (list), containing quality criterion calculated each epoch of learning.
     """
-    epochs = int(5e+5)
+    epochs = int(1e+5)
 
     if save_every is None:
         save_every = epochs - 1
@@ -79,7 +79,7 @@ def train_sgd_auto(model: nn.Module, train_dataset: DataLoaderType, validate_dat
     
     lambda_lin = lambda epoch: 1#1 - (1 - 1e-1)*epoch/epochs
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_lin)
-    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=3e-2, end_factor=1e-8, total_iters=epochs)
+    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-2, end_factor=1e-2, total_iters=epochs)
 
     print_every = 1
     timer = Timer()
