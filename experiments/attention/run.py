@@ -10,10 +10,10 @@ from oracle import count_parameters
 from trainer import train
 from utils import dataset_prepare
 from scipy.io import loadmat
-from model import CVCNN
+from model import EncoderBasedNL
 
 # Determine experiment name and create its directory
-exp_name = "cvcnn_mnm"
+exp_name = "encoder_sgd"
 # exp_name = "test"
 
 add_folder = os.path.join("")
@@ -38,22 +38,16 @@ mat = loadmat("../../data/data2d.mat")
 # Define data type
 # dtype = torch.complex64
 dtype = torch.complex128
-
-# Number of output channels of each convolutional layer.
-# out_channels = [1, 1]
-out_channels = [3, 3, 3, 1]
-# out_channels = [5, 5, 5, 1]
-# Kernel size for each layer. Kernel sizes must be odd integer numbers.
-# Otherwise input sequence length will be reduced by 1 (for case of mode == 'same' in nn.Conv1d).
-# kernel_size = [3, 3]
-kernel_size = [3, 3, 3, 3]
-# kernel_size = [5, 5, 5, 5]
+# A list of intermediate embedding sizes within each encoder
+interm_embed_size = [12]
+# A list of numbers of self-attention heads in each encoder
+num_heads = [1]
 # Activation functions are listed in /model/layers/activation.py
 # Don`t forget that model output must be holomorphic w.r.t. model parameters
-# activate = ['sigmoid', 'sigmoid']
-activate = ['sigmoid', 'sigmoid', 'sigmoid', 'sigmoid']
+activate = ['sigmoid']
+# activate = ['sigmoid', 'sigmoid', 'sigmoid', 'sigmoid']
 # activate = ['ctanh', 'ctanh', 'ctanh', 'ctanh']
-p_drop = list(np.zeros_like(out_channels))
+p_drop = list(np.zeros_like(num_heads))
 delays = [[0]]
 slot_num = 10
 # Indices of slots which are chosen to be included in train/test set (must be of a range type).
@@ -78,13 +72,17 @@ config_train = None
 # Since each 1d convolution in model CVCNN makes zero-padding with int(kernel_size/2) left and right, then 
 # NO additional padding in the input batches is required.
 # pad_zeros = 2
-pad_zeros = 4
+pad_zeros = 0
 dataset = dataset_prepare(mat, dtype, device, slot_num=slot_num, delay_d=delay_d,
                           train_slots_ind=train_slots_ind, test_slots_ind=test_slots_ind, validat_slots_ind=validat_slots_ind,
                           pad_zeros=pad_zeros, batch_size=batch_size, block_size=chunk_size)
 
 train_dataset, validate_dataset, test_dataset = dataset
 
+# Input embedding size (3 * N) depends on the number of input power channels N
+for j, batch in enumerate(train_dataset):
+    in_channels_num = batch[0].size()[1]
+    break
 # Show sizes of batches in train dataset, size of validation and test dataset
 # for i in range(len(dataset)):
 #     for j, batch in enumerate(dataset[i]):
@@ -141,16 +139,18 @@ def get_nested_attr(module, names):
             return
     return module
 
-# CVCNN - Complex-Valued Convolutional NN.
-# Takes pure signal both channels x_{A, n}, x_{B, n} as an input and 
-# creates input features: x_{A, n}, x_{B, n}, |x_{A, n}|, |x_{B, n}|. Thus there're 4 input channels.
-# Output channel numbers are rehulated by the list out_channels.
-# Last layer output channels number equal 1, which corresponds to pre-distorted signal.
-model = CVCNN(device=device, delays=delays, out_channels=out_channels, kernel_size=kernel_size, features=['same', 'abs'], 
-              activate=activate, batch_norm_mode='nothing', p_drop=p_drop, bias=True, dtype=dtype)
+# EncoderBasedNL is a sequence of encoders.
+# Takes pure signal for each of N channels x_{0, n}, ..., x_{N-1, n} as an input and 
+# creates input features: Re(x_{0, n}), Im(x_{0, n}), |x_{0, n}|, ..., Re(x_{N-1, n}), Im(x_{N-1, n}), |x_{N-1, n}|. 
+# Thus there're 3N input channels. This number of channels corresponds to input embedding size.
+# Each self-attention block is followed by linear layer, which transforms embedding into dimensionality, defined by out_embed_size list.
+# Output embedding size equals 2N, which correspond to Re(x_last_layer) and Im(x_last_layer) part of 
+# pre-distorted signal for each input channel. Output of Encoder is Re(x_last_layer) + 1j * Im(x_last_layer)
+model = EncoderBasedNL(in_channels_num=in_channels_num, interm_embed_size=interm_embed_size, num_heads=num_heads, p_drop=p_drop, 
+                        activate=activate, layer_norm_mode='common', features=['real', 'imag', 'abs'], bias=True, device=device, dtype=dtype)
 
 model.to(device)
-
+sys.exit()
 weight_names = list(name for name, _ in model.state_dict().items())
 
 print(f"Current model parameters number is {count_parameters(model)}")

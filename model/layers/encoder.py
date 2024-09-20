@@ -50,6 +50,8 @@ class Encoder(nn.Module):
             p_drop = [0 for i in range(len(interm_embed_size))]
         assert len(p_drop) == len(interm_embed_size), \
             "Number of dropout parameters must be the same as number of output embedding sizes."
+        self.device = device
+        self.dtype = dtype
         self.activate = activate
         # FC-layers initialization
         self.num_layers = len(interm_embed_size)
@@ -66,32 +68,32 @@ class Encoder(nn.Module):
         for layer_i in range(self.num_layers):
 
             self.attention.append(nn.MultiheadAttention(embed_dim=self.in_embed_size, num_heads=num_heads[layer_i], bias=True, 
-                                            batch_first=True, device=self.device, dtype=self.dtype))
+                                            batch_first=True, device=device, dtype=dtype))
 
             self.dp1.append(nn.Dropout(self.p_drop[layer_i]))
 
-            if batch_norm_mode == 'common':
+            if layer_norm_mode == 'common':
                 self.norm1.append(nn.LayerNorm(normalized_shape=(self.in_embed_size,)))
-            if batch_norm_mode == 'nothing':
+            if layer_norm_mode == 'nothing':
                 self.norm1.append(Identity())
 
             self.lin1.append(nn.Linear(in_features=self.in_embed_size, out_features=self.interm_embed_size[layer_i], 
-                            bias=True, device=self.device, dtype=self.dtype))
+                            bias=True, device=device, dtype=dtype))
 
             self.activation.append(configure_activates(activate[layer_i], channel_num=self.out_channels[layer_i], 
                                              dtype=dtype))
 
             self.lin2.append(nn.Linear(in_features=self.interm_embed_size[layer_i], out_features=self.in_embed_size, 
-                            bias=True, device=self.device, dtype=self.dtype))
+                            bias=True, device=device, dtype=dtype))
 
             self.dp2.append(nn.Dropout(self.p_drop[layer_i]))
 
-            if batch_norm_mode == 'common':
+            if layer_norm_mode == 'common':
                 self.norm2.append(nn.LayerNorm(normalized_shape=(self.in_embed_size,)))
-            if batch_norm_mode == 'nothing':
+            if layer_norm_mode == 'nothing':
                 self.norm2.append(Identity())
         self.lin_out = nn.Linear(in_features=self.in_embed_size, out_features=self.out_embed_size, 
-                                bias=True, device=self.device, dtype=self.dtype)
+                                bias=True, device=device, dtype=dtype)
 
     def forward(self, x_in):
         # Input has dims (batch_size, embed_size, seq_len)
