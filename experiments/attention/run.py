@@ -150,7 +150,7 @@ model = EncoderBasedNL(in_channels_num=in_channels_num, interm_embed_size=interm
                         activate=activate, layer_norm_mode='common', features=['real', 'imag', 'abs'], bias=True, device=device, dtype=dtype)
 
 model.to(device)
-sys.exit()
+
 weight_names = list(name for name, _ in model.state_dict().items())
 
 print(f"Current model parameters number is {count_parameters(model)}")
@@ -177,12 +177,13 @@ def param_init(model):
                 layer_module.bias.data *= 1e-2
     return None
 
-param_init(model)
+# param_init(model)
 
 # Train type shows which algorithm is used for optimization.
-# train_type='sgd_auto' # gradient-based optimizer.
-train_type='mnm_lev_marq' # Levenberg-Marquardt on base of Mixed Newton. Work only with models with complex parameters!
+train_type='sgd_auto' # gradient-based optimizer.
+# train_type='mnm_lev_marq' # Levenberg-Marquardt on base of Mixed Newton. Work only with models with complex parameters!
 # train_type='ls' # LS method: 1 Mixed-Newton step
+# sys.exit()
 learning_curve, best_criterion = train(model, train_dataset, loss, quality_criterion, config_train, batch_to_tensors, validate_dataset, test_dataset, 
                                        train_type=train_type, chunk_num=chunk_num, exp_name=exp_name, save_every=10, save_path=save_path, 
                                        weight_names=weight_names, device=device)
