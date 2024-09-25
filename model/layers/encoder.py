@@ -80,7 +80,7 @@ class Encoder(nn.Module):
             self.lin1.append(nn.Linear(in_features=self.in_embed_size, out_features=self.interm_embed_size[layer_i], 
                             bias=True, device=device, dtype=dtype))
 
-            self.activation.append(configure_activates(activate[layer_i], channel_num=self.out_channels[layer_i], 
+            self.activation.append(configure_activates(activate[layer_i], channel_num=self.interm_embed_size[layer_i], 
                                              dtype=dtype))
 
             self.lin2.append(nn.Linear(in_features=self.interm_embed_size[layer_i], out_features=self.in_embed_size, 
@@ -102,7 +102,10 @@ class Encoder(nn.Module):
         x_curr = torch.clone(x_in)
         for layer_i in range(self.num_layers):
             # Self-attention takes dims (batch_size, seq_len, embed_size) with batch_first=True
-            x_curr = self.attention[layer_i](x_curr)
+            x_curr = self.attention[layer_i](x_curr, x_curr, x_curr)
+            print(x_curr.size())
+            import sys
+            sys.exit()
             # Dropout input can have any shape, current: (batch_size, seq_len, embed_size)
             x_curr = self.dp1(x_curr)
             # Add residual connection
