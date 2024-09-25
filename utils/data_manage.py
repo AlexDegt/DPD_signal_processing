@@ -78,6 +78,7 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
         batch_size = 1
 
     assert len(data_path) == len(pa_powers), "Number of dynamic cases in data_path must equal number of corresponding PA output powers."
+    dynam_case_num = len(data_path)
 
     input, target = [], []
     for path in data_path:
@@ -89,6 +90,7 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
 
     pa_list = [pa_pow * torch.ones(1, 1, input[0].numel()) for pa_pow in pa_powers]
     pa_powers = torch.cat(pa_list, dim=1).to(device).to(dtype)
+
 
     input = torch.cat(input, dim=1)
     target = torch.cat(target, dim=1)
@@ -126,10 +128,10 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
         block_size = input_train_size
     block_size_target = block_size
     
-    block_size_test = input_test_size
+    block_size_test = input_test_size * dynam_case_num
     block_size_test_target = block_size_test
 
-    block_size_validat = input_validat_size
+    block_size_validat = input_validat_size * dynam_case_num
     block_size_validat_target = block_size_validat
     
     dataset = list()
