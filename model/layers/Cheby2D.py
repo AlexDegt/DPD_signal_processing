@@ -9,7 +9,7 @@ import torch.nn as nn
 
 
 class Cheby2D(nn.Module):
-    def __init__(self, order = 4, complex_coef = True, uniCalc = False, dtype = torch.complex128, device = 'cuda'):
+    def __init__(self, delay = 0, order = 4, complex_coef = True, uniCalc = False, dtype = torch.complex128, device = 'cuda'):
         super().__init__()
         self.order = order
         self.dtype = dtype
@@ -28,9 +28,20 @@ class Cheby2D(nn.Module):
         self.vand = (T0[:, None, :] * T1[None, :, :]).reshape(-1, T0.shape[-1]).T.to(self.dtype)
         
         approx = (self.vand @ self.Cheby2D)[None, None, :]
-        
         return approx
     
+class Cheby2D_delay(nn.Module):
+    def __init__(self, delay, order = 4, complex_coef = True, uniCalc = False, dtype = torch.complex128, device = 'cuda'):
+        super().__init__()
+        self.delay = Delay(delay)
+        self.Cheby = Cheby2D()
+        
+    def forward(self, input):
+        out = self.delay(input)
+        return self.Cheby(out)
+       
+    
+    "Rewrite the Delay function"
 class Delay(nn.Module):
     def __init__(self, M):
         super(Delay, self).__init__()
@@ -39,20 +50,15 @@ class Delay(nn.Module):
 
     def forward(self, x):
         return self.op(x)[:, :, :x.shape[2]] if self.M > 0 else self.op(x)[:, :, -x.shape[2]:]
-        
-class Cheby_parallel_2D(nn.Module):
-    def __init__ (self, delays):
-        super(Cheby_parallel_2D, self).__init__()
-        
-        self.cells = nn.ModuleList()
-        for i in range(len(delays)):
-            # print(i)
-            self.cells.append(Cheby_parallel_2D(delay = delays[i]))
     
-    def forward (self, x):
-        out = torch.zeros_like(x)
-        
-        for i in range(len(self.cells)):
-            out += self.cells[i](x)
-            
-        return out
+    
+# class Delay(nn.Module):
+#     def __init__(self, delays):
+#         super(Delay, self).__init__()
+#         self.delays = delays
+
+# "Check delay"
+# device = 'cuda'
+# x = torch.tensor([5, 1, -3, 2, -8, 2, -3, 7, -4, 0]).reshape(1, 1, -1).to(device)
+# delay = Delay(-5)
+# print(delay(x))

@@ -10,7 +10,7 @@ from oracle import count_parameters
 from trainer import train
 from utils import dataset_prepare
 from scipy.io import loadmat
-from model import CVCNN
+from model import Cheby_parallel_2D
 
 # Determine experiment name and create its directory
 exp_name = "test"
@@ -20,7 +20,7 @@ curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:3"
+device = "cuda:0"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -53,7 +53,7 @@ kernel_size = [3, 3, 3, 3]
 activate = ['sigmoid', 'sigmoid', 'sigmoid', 'sigmoid']
 # activate = ['ctanh', 'ctanh', 'ctanh', 'ctanh']
 p_drop = list(np.zeros_like(out_channels))
-delays = [[0]]
+# delays = [[0]]
 slot_num = 10
 # Indices of slots which are chosen to be included in train/test set (must be of a range type).
 # Elements of train_slots_ind, test_slots_ind must be higher than 0 and lower, than slot_num
@@ -145,45 +145,50 @@ def get_nested_attr(module, names):
 # creates input features: x_{A, n}, x_{B, n}, |x_{A, n}|, |x_{B, n}|. Thus there're 4 input channels.
 # Output channel numbers are rehulated by the list out_channels.
 # Last layer output channels number equal 1, which corresponds to pre-distorted signal.
-model = CVCNN(device=device, delays=delays, out_channels=out_channels, kernel_size=kernel_size, features=['same', 'abs'], 
-              activate=activate, batch_norm_mode='nothing', p_drop=p_drop, bias=True, dtype=dtype)
+delays = list(np.arange(1))
+model = Cheby_parallel_2D(delays)
+
+# sys.exit()
+
+# model = CVCNN(device=device, delays=delays, out_channels=out_channels, kernel_size=kernel_size, features=['same', 'abs'], 
+#               activate=activate, batch_norm_mode='nothing', p_drop=p_drop, bias=True, dtype=dtype)
 
 model.to(device)
 
 weight_names = list(name for name, _ in model.state_dict().items())
 
-print(f"Current model parameters number is {count_parameters(model)}")
-param_names = [name for name, p in model.named_parameters()]
-params = [(name, p.size(), p.dtype) for name, p in model.named_parameters()]
-# print(params)
+# print(f"Current model parameters number is {count_parameters(model)}")
+# param_names = [name for name, p in model.named_parameters()]
+# params = [(name, p.size(), p.dtype) for name, p in model.named_parameters()]
+# # print(params)
 
-def param_init(model):
-    branch_num = len(delays)
-    for i in range(branch_num):
-        for j in range(len(out_channels)):  
-            layer_name = f'nonlin.cnn.{j}.conv_layer'.split(sep='.')
+# def param_init(model):
+#     branch_num = len(delays)
+#     for i in range(branch_num):
+#         for j in range(len(out_channels)):  
+#             layer_name = f'nonlin.cnn.{j}.conv_layer'.split(sep='.')
             
-            layer_module = get_nested_attr(model, layer_name)
+#             layer_module = get_nested_attr(model, layer_name)
 
-            torch.nn.init.normal_(layer_module.weight.data, mean=0, std=1)
-            # torch.nn.init.uniform_(layer_module.weight.data, -1, 1)
+#             torch.nn.init.normal_(layer_module.weight.data, mean=0, std=1)
+#             # torch.nn.init.uniform_(layer_module.weight.data, -1, 1)
 
-            # Small initial parameters is important is case of using tanh activation
-            layer_module.weight.data *= 1e-2
+#             # Small initial parameters is important is case of using tanh activation
+#             layer_module.weight.data *= 1e-2
 
-            if layer_module.bias is not None:
-                torch.nn.init.normal_(layer_module.bias.data, mean=0, std=1)
-                layer_module.bias.data *= 1e-2
-    return None
+#             if layer_module.bias is not None:
+#                 torch.nn.init.normal_(layer_module.bias.data, mean=0, std=1)
+#                 layer_module.bias.data *= 1e-2
+#     return None
 
-param_init(model)
+# param_init(model)
 
 # Train type shows which algorithm is used for optimization.
 # train_type='sgd_auto' # gradient-based optimizer.
 # train_type='mnm_lev_marq' # Levenberg-Marquardt on base of Mixed Newton. Work only with models with complex parameters!
 train_type='ls' # LS method: 1 Mixed-Newton step
 learning_curve, best_criterion = train(model, train_dataset, loss, quality_criterion, config_train, batch_to_tensors, validate_dataset, test_dataset, 
-                                       train_type=train_type, chunk_num=chunk_num, exp_name=exp_name, save_every=1, save_path=save_path, 
-                                       weight_names=weight_names, device=device)
+                                        train_type=train_type, chunk_num=chunk_num, exp_name=exp_name, save_every=1, save_path=save_path, 
+                                        weight_names=weight_names, device=device)
 
 print(f"Best NMSE: {best_criterion} dB")
