@@ -84,7 +84,7 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     for path in data_path:
         mat = loadmat(path)
         input_tensor = torch.tensor(mat['TX'][0, :], dtype=dtype).view(1, 1, -1).to(device)
-        target_tensor = torch.tensor(mat['TX'][0, :] - mat['PAout'][0, :], dtype=dtype).view(1, 1, -1).to(device)
+        target_tensor = torch.tensor(mat['PAout'][0, :] - mat['TX'][0, :], dtype=dtype).view(1, 1, -1).to(device)
         input.append(input_tensor)
         target.append(target_tensor)
 

@@ -103,8 +103,6 @@ class Encoder(nn.Module):
         x_curr = torch.clone(x_in)
         for layer_i in range(self.num_layers):
             # Self-attention takes dims (batch_size, seq_len, embed_size) with batch_first=True
-            print(x_in.size())
-            # sys.exit()
             x_curr, _ = self.attention[layer_i](x_curr, x_curr, x_curr)
             # Dropout input can have any shape, current: (batch_size, seq_len, embed_size)
             x_curr = self.dp1[layer_i](x_curr)
@@ -124,10 +122,7 @@ class Encoder(nn.Module):
             x_curr += x_lin1_in
             # LayerNorm deals with last embed_size dimensions, thus dims: (batch_size, seq_len, embed_size)
             x_curr = self.norm2[layer_i](x_curr)
-        print(x_in.size())
         # Output linear layer to transform embedding into desired dimensionality
         x_curr = self.lin_out(x_curr)
         # Output has dimensionality: (batch_size, output_embed_size, seq_len)
-        print(x_in.size())
-        sys.exit()
         return torch.permute(x_curr, (0, 2, 1))
