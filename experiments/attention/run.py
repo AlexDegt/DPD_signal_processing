@@ -105,8 +105,7 @@ def batch_to_tensors(a):
     return x, d
 
 def complex_mse_loss(d, y, model):
-    error = (d - y)[..., pad_zeros: -pad_zeros]
-    # error = (d - y)
+    error = (d - y)[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None]
     return error.abs().square().sum() #+ alpha * sum(torch.norm(p)**2 for p in model.parameters())
 
 def loss(model, signal_batch):
@@ -121,8 +120,8 @@ def loss(model, signal_batch):
 def quality_criterion(model, dataset):
     targ_pow, loss_val = 0, 0
     for batch in dataset:
-        _, d = batch_to_tensors(batch)
-        targ_pow += d[..., pad_zeros: -pad_zeros].abs().square().sum()
+        _, d= batch_to_tensors(batch)
+        targ_pow += d[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None].abs().square().sum()
         loss_val += loss(model, batch)
     return 10.0 * torch.log10((loss_val) / (targ_pow)).item()
 

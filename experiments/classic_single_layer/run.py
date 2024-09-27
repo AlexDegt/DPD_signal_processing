@@ -10,7 +10,7 @@ from oracle import count_parameters
 from trainer import train
 from utils import dynamic_dataset_prepare
 from scipy.io import loadmat
-from model import Cheby_parallel_2D
+from model import ParallelCheby2D
 
 # Determine experiment name and create its directory
 exp_name = "test"
@@ -20,7 +20,7 @@ curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:0"
+device = "cuda:2"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -38,9 +38,16 @@ data_path = ['../../data/single_band_dynamic/aligned_m15dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m6dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m3dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
+# data_path = ['../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
 
 pa_powers = [0., 0.2, 0.4, 0.6, 0.8, 1.]
+# pa_powers = [1.]
 
+# Model initialization
+order = [10, 6]
+delays = [[j, j, j] for j in range(-15, 16)]
+# delays = [[0, 0, 0], [3, 3, 3], [6, 6, 6], [9, 9, 9], [12, 12, 12], [15, 15, 15], [-3, -3, -3], [-6, -6, -6], [-9, -9, -9], [-12, -12, -12], [-15, -15, -15]]
+# delays = [[0, 0], [0, 0], [0, 0]]
 # Define data type
 # dtype = torch.complex64
 dtype = torch.complex128
@@ -56,7 +63,7 @@ delay_d = 0
 # block_size == None is equal to block_size = signal length.
 # Block size is the same as chunk size 
 batch_size = 1
-chunk_num = 1
+chunk_num = 16
 # chunk_size = int(213504/chunk_num)
 chunk_size = int(36864 * 6/chunk_num)
 # L2 regularization parameter
@@ -75,14 +82,14 @@ dataset = dynamic_dataset_prepare(data_path, pa_powers, dtype, device, slot_num=
 train_dataset, validate_dataset, test_dataset = dataset
 
 # Show sizes of batches in train dataset, size of validation and test dataset
-for i in range(len(dataset)):
-    for j, batch in enumerate(dataset[i]):
-        # if j == 0:
-        # Input batch size
-        print(batch[0].size())
-        # Target batch size
-        # print(batch[1].size())
-    print(j + 1)
+# for i in range(len(dataset)):
+#     for j, batch in enumerate(dataset[i]):
+#         # if j == 0:
+#         # Input batch size
+#         print(batch[0].size())
+#         # Target batch size
+#         # print(batch[1].size())
+#     print(j + 1)
 # sys.exit()
 
 def batch_to_tensors(a):
@@ -91,8 +98,7 @@ def batch_to_tensors(a):
     return x, d
 
 def complex_mse_loss(d, y, model):
-    error = (d - y)[..., pad_zeros: -pad_zeros]
-    # error = (d - y)
+    error = (d - y)[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None]
     return error.abs().square().sum() #+ alpha * sum(torch.norm(p)**2 for p in model.parameters())
 
 def loss(model, signal_batch):
@@ -107,10 +113,18 @@ def loss(model, signal_batch):
 def quality_criterion(model, dataset):
     targ_pow, loss_val = 0, 0
     for batch in dataset:
-        _, d = batch_to_tensors(batch)
-        targ_pow += d[..., pad_zeros: -pad_zeros].abs().square().sum()
+        _, d= batch_to_tensors(batch)
+        targ_pow += d[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None].abs().square().sum()
         loss_val += loss(model, batch)
     return 10.0 * torch.log10((loss_val) / (targ_pow)).item()
+
+# def quality_criterion(model, dataset):
+#     input_pow, loss_val = 0, 0
+#     for batch in dataset:
+#         x, _= batch_to_tensors(batch)
+#         input_pow += x[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None].abs().square().sum()
+#         loss_val += loss(model, batch)
+#     return 10.0 * torch.log10((loss_val) / (input_pow)).item()
 
 def load_weights(path_name, device=device):
     return torch.load(path_name, map_location=torch.device(device))
@@ -125,9 +139,7 @@ def get_nested_attr(module, names):
             return
     return module
 
-# Model initialization
-delays = list(np.arange(1))
-model = Cheby_parallel_2D(delays)
+model = ParallelCheby2D(order, delays, dtype, device)
 
 model.to(device)
 
@@ -136,9 +148,9 @@ weight_names = list(name for name, _ in model.state_dict().items())
 print(f"Current model parameters number is {count_parameters(model)}")
 # param_names = [name for name, p in model.named_parameters()]
 # params = [(name, p.size(), p.dtype) for name, p in model.named_parameters()]
-# # print(params)
+# print(params)
 
-sys.exit()
+# sys.exit()
 
 # Train type shows which algorithm is used for optimization.
 # train_type='sgd_auto' # gradient-based optimizer.
