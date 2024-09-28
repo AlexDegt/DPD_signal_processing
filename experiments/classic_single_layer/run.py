@@ -13,6 +13,7 @@ from scipy.io import loadmat
 from model import ParallelCheby2D
 
 # Determine experiment name and create its directory
+# exp_name = "single_dim_20_param_4_slot_6_cases"
 exp_name = "test"
 
 add_folder = os.path.join("")
@@ -20,7 +21,7 @@ curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:2"
+device = "cuda:5"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -44,7 +45,7 @@ pa_powers = [0., 0.2, 0.4, 0.6, 0.8, 1.]
 # pa_powers = [1.]
 
 # Model initialization
-order = [10, 6]
+order = [20, 1]
 delays = [[j, j, j] for j in range(-15, 16)]
 # delays = [[0, 0, 0], [3, 3, 3], [6, 6, 6], [9, 9, 9], [12, 12, 12], [15, 15, 15], [-3, -3, -3], [-6, -6, -6], [-9, -9, -9], [-12, -12, -12], [-15, -15, -15]]
 # delays = [[0, 0], [0, 0], [0, 0]]
@@ -56,16 +57,16 @@ slot_num = 10
 # Elements of train_slots_ind, test_slots_ind must be higher than 0 and lower, than slot_num
 # In full-batch mode train, validation and test dataset are the same.
 # In mini-batch mode validation and test dataset are the same.
-train_slots_ind, validat_slots_ind, test_slots_ind = range(1), range(1), range(1)
+train_slots_ind, validat_slots_ind, test_slots_ind = range(4), range(4), range(4)
 # train_slots_ind, validat_slots_ind, test_slots_ind = range(1), range(1), range(1)
 delay_d = 0
 # batch_size == None is equal to batch_size = 1.
 # block_size == None is equal to block_size = signal length.
 # Block size is the same as chunk size 
 batch_size = 1
-chunk_num = 16
+chunk_num = 24
 # chunk_size = int(213504/chunk_num)
-chunk_size = int(36864 * 6/chunk_num)
+chunk_size = int(36864 * 6 * 4/chunk_num)
 # L2 regularization parameter
 alpha = 0.0
 # Configuration file
