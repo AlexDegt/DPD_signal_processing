@@ -25,8 +25,8 @@ def aclr_fn(sig, f, fs=1.0, nfft=1024, window='blackman', nperseg=None, noverlap
     return 10 * np.log10(aclr)
 
 # add_folder = os.path.join("one_dim")
-add_folder = os.path.join("three_dim")
-# add_folder = os.path.join("six_dim")
+# add_folder = os.path.join("three_dim")
+add_folder = os.path.join("six_dim")
 # add_folder = os.path.join("nine_dim")
 curr_path = os.getcwd()
 load_path = os.path.join(curr_path, add_folder)
