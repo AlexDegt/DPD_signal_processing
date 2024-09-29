@@ -13,12 +13,12 @@ from scipy.io import loadmat
 from model import ParallelCheby2D
 
 # Determine experiment name and create its directory
-exp_name = "16_param_4_slot_6_cases"
+exp_name = "2_param_4_slot_6_cases"
 # exp_name = "test"
 
-# add_folder = os.path.join("one_dim")
+add_folder = os.path.join("one_dim")
 # add_folder = os.path.join("three_dim")
-add_folder = os.path.join("six_dim")
+# add_folder = os.path.join("six_dim")
 # add_folder = os.path.join("nine_dim")
 # add_folder = os.path.join("")
 curr_path = os.getcwd()
@@ -49,7 +49,7 @@ pa_powers = [0., 0.2, 0.4, 0.6, 0.8, 1.]
 # pa_powers = [1.]
 
 # Model initialization
-order = [16, 6]
+order = [2, 1]
 delays = [[j, j, j] for j in range(-15, 16)]
 # delays = [[0, 0, 0], [3, 3, 3], [6, 6, 6], [9, 9, 9], [12, 12, 12], [15, 15, 15], [-3, -3, -3], [-6, -6, -6], [-9, -9, -9], [-12, -12, -12], [-15, -15, -15]]
 # delays = [[0, 0], [0, 0], [0, 0]]
@@ -164,13 +164,18 @@ with torch.no_grad():
     dataset = validate_dataset
     NMSE = quality_criterion(model, dataset)
     print(NMSE)
+    y, d, x = [], [], []
     for j, batch in enumerate(dataset):
         data = batch_to_tensors(batch)
-    y = model(data[0])
 
-y = y[0, 0, :].detach().cpu().numpy()
-d = data[1][0, 0, :].detach().cpu().numpy()
-x = data[0][0, 0, :].detach().cpu().numpy()[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None]
-np.save(load_path + r'/y.npy', y)
-np.save(load_path + r'/d.npy', d)
-np.save(load_path + r'/x.npy', x)
+        y.append(model(data[0])[0, 0, :])
+        d.append(data[1][0, 0, :])
+        x.append(data[0][0, 0, :])
+
+    y_full = torch.cat(y, dim=-1).detach().cpu().numpy()
+    d_full = torch.cat(d, dim=-1).detach().cpu().numpy()
+    x_full = torch.cat(x, dim=-1).detach().cpu().numpy()[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None]
+
+    np.save(load_path + r'/y.npy', y_full)
+    np.save(load_path + r'/d.npy', d_full)
+    np.save(load_path + r'/x.npy', x_full)
