@@ -13,19 +13,21 @@ from scipy.io import loadmat
 from model import ParallelCheby2D
 
 # Determine experiment name and create its directory
-exp_name = "2_param_4_slot_6_cases"
+# exp_name = "4_param_4_slot_6_cases"
+# exp_name = "8_param_4_slot_5_test_cases"
+exp_name = "8_param_4_slot_11_cases"
 # exp_name = "test"
 
-add_folder = os.path.join("one_dim")
+# add_folder = os.path.join("one_dim")
 # add_folder = os.path.join("three_dim")
-# add_folder = os.path.join("six_dim")
+add_folder = os.path.join("six_dim")
 # add_folder = os.path.join("nine_dim")
 # add_folder = os.path.join("")
 curr_path = os.getcwd()
 load_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:5"
+device = "cuda:4"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -37,19 +39,37 @@ if device != "cpu":
     torch.backends.cudnn.deterministic = True
 
 # Load PA input and output data. Data for different cases is concatenated together
+# data_path = ['../../data/single_band_dynamic/aligned_m15dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m12dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m9dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m6dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m3dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
+# data_path = ['../../data/single_band_dynamic/aligned_m13_5dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m10_5dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m7_5dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m4_5dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m1_5dB_100RB_Fs245p76.mat']
 data_path = ['../../data/single_band_dynamic/aligned_m15dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m13_5dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m12dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m10_5dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m9dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m7_5dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m6dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m4_5dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m3dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
+             '../../data/single_band_dynamic/aligned_m1_5dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat']
 # data_path = ['../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
 
-pa_powers = [0., 0.2, 0.4, 0.6, 0.8, 1.]
+pa_powers = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.]
+# pa_powers = [0.1, 0.3, 0.5, 0.7, 0.9]
+# pa_powers = [0., 0.2, 0.4, 0.6, 0.8, 1.]
 # pa_powers = [1.]
 
 # Model initialization
-order = [2, 1]
+order = [8, 6]
 delays = [[j, j, j] for j in range(-15, 16)]
 # delays = [[0, 0, 0], [3, 3, 3], [6, 6, 6], [9, 9, 9], [12, 12, 12], [15, 15, 15], [-3, -3, -3], [-6, -6, -6], [-9, -9, -9], [-12, -12, -12], [-15, -15, -15]]
 # delays = [[0, 0], [0, 0], [0, 0]]
@@ -70,7 +90,7 @@ delay_d = 0
 batch_size = 1
 chunk_num = 8
 # chunk_size = int(213504/chunk_num)
-chunk_size = int(36864 * 6 * 4/chunk_num)
+chunk_size = int(36864 * len(data_path) * 4/chunk_num)
 # L2 regularization parameter
 alpha = 0.0
 # Configuration file
@@ -176,6 +196,10 @@ with torch.no_grad():
     d_full = torch.cat(d, dim=-1).detach().cpu().numpy()
     x_full = torch.cat(x, dim=-1).detach().cpu().numpy()[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None]
 
-    np.save(load_path + r'/y.npy', y_full)
-    np.save(load_path + r'/d.npy', d_full)
-    np.save(load_path + r'/x.npy', x_full)
+    np.save(load_path + r'/y_test.npy', y_full)
+    np.save(load_path + r'/d_test.npy', d_full)
+    np.save(load_path + r'/x_test.npy', x_full)
+
+    # np.save(load_path + r'/y.npy', y_full)
+    # np.save(load_path + r'/d.npy', d_full)
+    # np.save(load_path + r'/x.npy', x_full)

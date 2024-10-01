@@ -35,7 +35,8 @@ f = 10 # MHz
 fs = 245.76 # MHz
 nfft = 1024
 
-power_cases = [-15, -12, -9, -6, -3, 0]
+# power_cases = [-15, -12, -9, -6, -3, 0]
+power_cases = [-13.5, -10.5, -7.5, -4.5, -1.5]
 
 param_num = list(np.arange(2, 22, 2))
 # param_num = list(np.arange(4, 20, 4))
@@ -44,9 +45,12 @@ nmse, aclr = [], []
 
 for j, param in enumerate(param_num):
 
-    tx = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "x.npy"))
-    pa_out = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "d.npy"))
-    model_out = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "y.npy"))
+    tx = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "x_test.npy"))
+    pa_out = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "d_test.npy"))
+    model_out = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "y_test.npy"))
+    # tx = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "x.npy"))
+    # pa_out = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "d.npy"))
+    # model_out = np.load(os.path.join(load_path, f"{param}_param_4_slot_6_cases", "y.npy"))
     sig_len = int(len(tx) / len(power_cases))
 
     curr_case_nmse, curr_case_aclr = [], []
@@ -67,5 +71,7 @@ for j, param in enumerate(param_num):
     nmse.append(curr_case_nmse)
     aclr.append(curr_case_aclr)
 
-np.save(os.path.join(load_path, "nmse.npy"), np.array(nmse))
-np.save(os.path.join(load_path, "aclr.npy"), np.array(aclr))
+np.save(os.path.join(load_path, "nmse_test.npy"), np.array(nmse))
+np.save(os.path.join(load_path, "aclr_test.npy"), np.array(aclr))
+# np.save(os.path.join(load_path, "nmse.npy"), np.array(nmse))
+# np.save(os.path.join(load_path, "aclr.npy"), np.array(aclr))
