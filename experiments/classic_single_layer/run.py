@@ -13,19 +13,22 @@ from scipy.io import loadmat
 from model import ParallelCheby2D
 
 # Determine experiment name and create its directory
-exp_name = "8_param_4_slot_11_cases"
-# exp_name = "16_param_4_slot_6_cases"
+exp_name = "8_param_4_slot_8_cases"
 # exp_name = "test"
 
+# add_folder = os.path.join("")
 # add_folder = os.path.join("one_dim")
 # add_folder = os.path.join("three_dim")
-add_folder = os.path.join("six_dim")
+add_folder = os.path.join("four_dim")
+# add_folder = os.path.join("six_dim")
+# add_folder = os.path.join("eight_dim")
 # add_folder = os.path.join("nine_dim")
+# add_folder = os.path.join("sixteen_dim")
 curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:2"
+device = "cuda:3"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -37,58 +40,58 @@ if device != "cpu":
     torch.backends.cudnn.deterministic = True
 
 # Load PA input and output data. Data for different cases is concatenated together
-# data_path = ['../../data/single_band_dynamic/aligned_m15dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m12dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m9dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m6dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m3dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
-# data_path = ['../../data/single_band_dynamic/aligned_m13_5dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m10_5dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m7_5dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m4_5dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m1_5dB_100RB_Fs245p76.mat']
-data_path = ['../../data/single_band_dynamic/aligned_m15dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m13_5dB_100RB_Fs245p76.mat',
+data_path = ['../../data/single_band_dynamic/aligned_m14dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m12dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m10_5dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m9dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m7_5dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m10dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m8dB_100RB_Fs245p76.mat',
              '../../data/single_band_dynamic/aligned_m6dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m4_5dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m3dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m1_5dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat']
+             '../../data/single_band_dynamic/aligned_m4dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m2dB_100RB_Fs245p76.mat',
+             '../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
+# data_path = ['../../data/single_band_dynamic/aligned_m15dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m13dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m11dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m9dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m7dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m5dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m3dB_100RB_Fs245p76.mat',
+#              '../../data/single_band_dynamic/aligned_m1dB_100RB_Fs245p76.mat',]
 # data_path = ['../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
 
-pa_powers = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.]
+# For train
+pa_powers = [0.066, 0.2, 0.333, 0.466, 0.6, 0.733, 0.866, 1.]
+# For test
+# pa_powers = [0., 0.133, 0.266, 0.4, 0.533, 0.666, 0.8, 0.933]
+# pa_powers = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.]
 # pa_powers = [0.1, 0.3, 0.5, 0.7, 0.9]
 # pa_powers = [0., 0.2, 0.4, 0.6, 0.8, 1.]
 # pa_powers = [1.]
 
 # Model initialization
-order = [8, 6]
-delays = [[j, j, j] for j in range(-15, 16)]
+order = [8, 4]
+delays = [[j, j, j] for j in range(-12, 13)]
+# delays = [[j, j, j] for j in range(-15, 16)]
 # delays = [[0, 0, 0], [3, 3, 3], [6, 6, 6], [9, 9, 9], [12, 12, 12], [15, 15, 15], [-3, -3, -3], [-6, -6, -6], [-9, -9, -9], [-12, -12, -12], [-15, -15, -15]]
 # delays = [[0, 0], [0, 0], [0, 0]]
 # Define data type
 # dtype = torch.complex64
 dtype = torch.complex128
-slot_num = 10
+slot_num = 4
 # Indices of slots which are chosen to be included in train/test set (must be of a range type).
 # Elements of train_slots_ind, test_slots_ind must be higher than 0 and lower, than slot_num
 # In full-batch mode train, validation and test dataset are the same.
 # In mini-batch mode validation and test dataset are the same.
 train_slots_ind, validat_slots_ind, test_slots_ind = range(4), range(4), range(4)
+# train_slots_ind, validat_slots_ind, test_slots_ind = range(2), range(2), range(2)
 # train_slots_ind, validat_slots_ind, test_slots_ind = range(1), range(1), range(1)
 delay_d = 0
 # batch_size == None is equal to batch_size = 1.
 # block_size == None is equal to block_size = signal length.
 # Block size is the same as chunk size 
 batch_size = 1
-chunk_num = 48
+chunk_num = 24
 # chunk_size = int(213504/chunk_num)
-chunk_size = int(36864 * len(data_path) * 4/chunk_num)
+chunk_size = int(36846 * len(data_path) * len(train_slots_ind) // chunk_num)
 # L2 regularization parameter
 alpha = 0.0
 # Configuration file

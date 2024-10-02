@@ -24,7 +24,8 @@ def aclr_fn(sig, f, fs=1.0, nfft=1024, window='blackman', nperseg=None, noverlap
     aclr = np.sum(psd[ind1: ind2])/(np.sum(psd[:ind1]) + np.sum(psd[ind2:]))
     return 10 * np.log10(aclr)
 
-add_folder = os.path.join("one_dim")
+add_folder = os.path.join("")
+# add_folder = os.path.join("one_dim")
 # add_folder = os.path.join("three_dim")
 # add_folder = os.path.join("six_dim")
 # add_folder = os.path.join("nine_dim")
