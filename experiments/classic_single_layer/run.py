@@ -13,22 +13,23 @@ from scipy.io import loadmat
 from model import ParallelCheby2D
 
 # Determine experiment name and create its directory
-exp_name = "8_param_4_slot_8_cases"
+exp_name = "8_param_4_slot_85_cases"
 # exp_name = "test"
 
 # add_folder = os.path.join("")
 # add_folder = os.path.join("one_dim")
 # add_folder = os.path.join("three_dim")
-add_folder = os.path.join("four_dim")
+# add_folder = os.path.join("four_dim")
 # add_folder = os.path.join("six_dim")
 # add_folder = os.path.join("eight_dim")
 # add_folder = os.path.join("nine_dim")
 # add_folder = os.path.join("sixteen_dim")
+add_folder = os.path.join("twelve_dim")
 curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:3"
+device = "cuda:5"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -40,23 +41,10 @@ if device != "cpu":
     torch.backends.cudnn.deterministic = True
 
 # Load PA input and output data. Data for different cases is concatenated together
-data_path = ['../../data/single_band_dynamic/aligned_m14dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m12dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m10dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m8dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m6dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m4dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m2dB_100RB_Fs245p76.mat',
-             '../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
-# data_path = ['../../data/single_band_dynamic/aligned_m15dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m13dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m11dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m9dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m7dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m5dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m3dB_100RB_Fs245p76.mat',
-#              '../../data/single_band_dynamic/aligned_m1dB_100RB_Fs245p76.mat',]
-# data_path = ['../../data/single_band_dynamic/aligned_m0dB_100RB_Fs245p76.mat',]
+folder_path = '../../data/single_band_dynamic_small_step'
+data_path = [os.path.join(folder_path, file_name) for file_name in sorted(os.listdir(folder_path))]
+print(data_path)
+sys.exit()
 
 # For train
 pa_powers = [0.066, 0.2, 0.333, 0.466, 0.6, 0.733, 0.866, 1.]
