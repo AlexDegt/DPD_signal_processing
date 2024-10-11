@@ -13,23 +13,15 @@ from scipy.io import loadmat
 from model import ParallelCheby2D
 
 # Determine experiment name and create its directory
-exp_name = "8_param_4_slot_85_cases"
+exp_name = "10_param_4_slot_61_cases_12_delay"
 # exp_name = "test"
 
-# add_folder = os.path.join("")
-# add_folder = os.path.join("one_dim")
-# add_folder = os.path.join("three_dim")
-# add_folder = os.path.join("four_dim")
-# add_folder = os.path.join("six_dim")
-# add_folder = os.path.join("eight_dim")
-# add_folder = os.path.join("nine_dim")
-# add_folder = os.path.join("sixteen_dim")
-add_folder = os.path.join("twelve_dim")
+add_folder = os.path.join("one_dim_lin_scale_corr_fraq_del_7_gain_mw_m16_0dBm")
 curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:5"
+device = "cuda:2"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -41,26 +33,19 @@ if device != "cpu":
     torch.backends.cudnn.deterministic = True
 
 # Load PA input and output data. Data for different cases is concatenated together
-folder_path = '../../data/single_band_dynamic_small_step'
-data_path = [os.path.join(folder_path, file_name) for file_name in sorted(os.listdir(folder_path))]
-print(data_path)
-sys.exit()
+folder_path = '../../data/single_band_dynamic'
+data_path = [os.path.join(folder_path, file_name) for file_name in sorted(os.listdir(folder_path), reverse=True)]
+data_path = [path for path in data_path if ".mat" in path]
+data_path = data_path[0::2]
 
 # For train
-pa_powers = [0.066, 0.2, 0.333, 0.466, 0.6, 0.733, 0.866, 1.]
-# For test
-# pa_powers = [0., 0.133, 0.266, 0.4, 0.533, 0.666, 0.8, 0.933]
-# pa_powers = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.]
-# pa_powers = [0.1, 0.3, 0.5, 0.7, 0.9]
-# pa_powers = [0., 0.2, 0.4, 0.6, 0.8, 1.]
-# pa_powers = [1.]
+pa_powers = np.load(os.path.join(folder_path, "pa_powers_round.npy"))
+pa_powers = list(10 ** (np.array(pa_powers) / 10))
+pa_powers = pa_powers[0::2]
 
 # Model initialization
-order = [8, 4]
+order = [10, 1]
 delays = [[j, j, j] for j in range(-12, 13)]
-# delays = [[j, j, j] for j in range(-15, 16)]
-# delays = [[0, 0, 0], [3, 3, 3], [6, 6, 6], [9, 9, 9], [12, 12, 12], [15, 15, 15], [-3, -3, -3], [-6, -6, -6], [-9, -9, -9], [-12, -12, -12], [-15, -15, -15]]
-# delays = [[0, 0], [0, 0], [0, 0]]
 # Define data type
 # dtype = torch.complex64
 dtype = torch.complex128
@@ -70,16 +55,16 @@ slot_num = 4
 # In full-batch mode train, validation and test dataset are the same.
 # In mini-batch mode validation and test dataset are the same.
 train_slots_ind, validat_slots_ind, test_slots_ind = range(4), range(4), range(4)
-# train_slots_ind, validat_slots_ind, test_slots_ind = range(2), range(2), range(2)
-# train_slots_ind, validat_slots_ind, test_slots_ind = range(1), range(1), range(1)
 delay_d = 0
 # batch_size == None is equal to batch_size = 1.
 # block_size == None is equal to block_size = signal length.
 # Block size is the same as chunk size 
 batch_size = 1
-chunk_num = 24
+chunk_num = 31 * 1 # 31 * 6 # 248, 
 # chunk_size = int(213504/chunk_num)
 chunk_size = int(36846 * len(data_path) * len(train_slots_ind) // chunk_num)
+# print(chunk_size, len(data_path), len(train_slots_ind))
+# sys.exit()
 # L2 regularization parameter
 alpha = 0.0
 # Configuration file
@@ -87,8 +72,8 @@ config_train = None
 # Input signal is padded with pad_zeros zeros at the beginning and ending of input signal.
 # Since each 1d convolution in model CVCNN makes zero-padding with int(kernel_size/2) left and right, then 
 # NO additional padding in the input batches is required.
-# pad_zeros = 2
 pad_zeros = 0
+trans_len = int(len(delays) // 2)
 dataset = dynamic_dataset_prepare(data_path, pa_powers, dtype, device, slot_num=slot_num, delay_d=delay_d,
                           train_slots_ind=train_slots_ind, test_slots_ind=test_slots_ind, validat_slots_ind=validat_slots_ind,
                           pad_zeros=pad_zeros, batch_size=batch_size, block_size=chunk_size)
@@ -102,7 +87,7 @@ train_dataset, validate_dataset, test_dataset = dataset
 #         # Input batch size
 #         print(batch[0].size())
 #         # Target batch size
-#         # print(batch[1].size())
+#         print(batch[1].size())
 #     print(j + 1)
 # sys.exit()
 
@@ -112,12 +97,12 @@ def batch_to_tensors(a):
     return x, d
 
 def complex_mse_loss(d, y, model):
-    error = (d - y)[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None]
+    error = (d - y)[..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None]
     return error.abs().square().sum() #+ alpha * sum(torch.norm(p)**2 for p in model.parameters())
 
 def loss(model, signal_batch):
     x, y = batch_to_tensors(signal_batch)
-    return complex_mse_loss(model(x), y, model)
+    return complex_mse_loss(y, model(x), model)
 # This function is used only for telecom task.
 # Calculates NMSE on base of accumulated on every batch loss function
 @torch.no_grad()
@@ -128,7 +113,7 @@ def quality_criterion(model, dataset):
     targ_pow, loss_val = 0, 0
     for batch in dataset:
         _, d= batch_to_tensors(batch)
-        targ_pow += d[..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None].abs().square().sum()
+        targ_pow += d[..., trans_len if trans_len > 0 else None: -pad_zeros if pad_zeros > 0 else None].abs().square().sum()
         loss_val += loss(model, batch)
     return 10.0 * torch.log10((loss_val) / (targ_pow)).item()
 

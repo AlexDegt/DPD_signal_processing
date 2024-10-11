@@ -39,36 +39,3 @@ class Cheby2D(nn.Module):
 
         approx = (self.vand @ self.weight)[None, None, :]
         return approx
-    
-class Cheby2D_delay(nn.Module):
-    def __init__(self, delay, order = 4, complex_coef = True, uniCalc = False, dtype = torch.complex128, device = 'cuda'):
-        super().__init__()
-        self.delay = Delay(delay)
-        self.Cheby = Cheby2D()
-        
-    def forward(self, input):
-        out = self.delay(input)
-        return self.Cheby(out)
-       
-    
-    "Rewrite the Delay function"
-class DelaySig(nn.Module):
-    def __init__(self, M):
-        super(Delay, self).__init__()
-        self.M = M
-        self.op = nn.Sequential(nn.ConstantPad1d(abs(M),0))
-
-    def forward(self, x):
-        return self.op(x)[:, :, :x.shape[2]] if self.M > 0 else self.op(x)[:, :, -x.shape[2]:]
-    
-    
-# class Delay(nn.Module):
-#     def __init__(self, delays):
-#         super(Delay, self).__init__()
-#         self.delays = delays
-
-# "Check delay"
-# device = 'cuda'
-# x = torch.tensor([5, 1, -3, 2, -8, 2, -3, 7, -4, 0]).reshape(1, 1, -1).to(device)
-# delay = Delay(-5)
-# print(delay(x))

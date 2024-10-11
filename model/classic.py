@@ -8,45 +8,7 @@ import torch
 import torch.nn as nn
 import sys
 
-from .layers import DelaySig, Cheby2D, Delay
-
-# class Cheby_parallel_2D(nn.Module):
-#     def __init__ (self, delays):
-#         super(Cheby_parallel_2D, self).__init__()
-        
-#         self.delays = delays
-#         # self.delay =` Delay(delays)
-#         self.cells = nn.ModuleList()
-#         for i in range(len(delays)):
-#             # print(i)
-#             self.cells.append(Cheby2D())
-    
-#     def forward (self, x):
-#         out = torch.zeros_like(x)
-        
-#         for i in range(len(self.cells)):
-#             delay = Delay(self.delays[i])
-#             out += self.cells[i](delay(x))
-            
-#         return out
-
-class Cheby_parallel_2D(nn.Module):
-    def __init__ (self, delays):
-        super(Cheby_parallel_2D, self).__init__()
-        
-        self.cells = nn.ModuleList()
-        for i in range(len(delays)):
-            # print(i)
-            self.cells.append(Cheby2D())
-    
-    def forward (self, x):
-        out = torch.zeros_like(x)
-        
-        for i in range(len(self.cells)):
-            delay = DelaySig(self.delays[i])
-            out += self.cells[i](delay(x))
-            
-        return out
+from .layers import Cheby2D, Delay
 
 class ParallelCheby2D(nn.Module):
     def __init__ (self, order, delays, dtype=torch.complex128, device='cuda:0'):
