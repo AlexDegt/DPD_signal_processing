@@ -12,17 +12,16 @@ from utils import dynamic_dataset_prepare
 from scipy.io import loadmat
 from model import ParallelCheby2D
 
-
 # Simulation parameters
-pow_param_num = 10
-param_num = 10
-delay_num = 8
+pow_param_num = 1
+param_num = 22
+delay_num = 4
 slot_num = 4
 # batch_size == None is equal to batch_size = 1.
 # block_size == None is equal to block_size = signal length.
 # Block size is the same as chunk size 
 batch_size = 1
-chunk_num = 31 * 4
+chunk_num = 31 * 1
 # Determine experiment name and create its directory
 exp_name = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay"
 # exp_name = "10_param_4_slot_61_cases_8_delay"
@@ -31,9 +30,9 @@ exp_name = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay"
 add_folder = os.path.join(f"{pow_param_num}_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm")
 curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
-# os.mkdir(save_path)
+os.mkdir(save_path)
 
-device = "cuda:4"
+device = "cuda:3"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
