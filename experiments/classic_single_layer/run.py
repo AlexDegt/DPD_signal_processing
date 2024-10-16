@@ -12,16 +12,28 @@ from utils import dynamic_dataset_prepare
 from scipy.io import loadmat
 from model import ParallelCheby2D
 
+
+# Simulation parameters
+pow_param_num = 10
+param_num = 10
+delay_num = 8
+slot_num = 4
+# batch_size == None is equal to batch_size = 1.
+# block_size == None is equal to block_size = signal length.
+# Block size is the same as chunk size 
+batch_size = 1
+chunk_num = 31 * 4
 # Determine experiment name and create its directory
-exp_name = "10_param_4_slot_61_cases_12_delay"
+exp_name = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay"
+# exp_name = "10_param_4_slot_61_cases_8_delay"
 # exp_name = "test"
 
-add_folder = os.path.join("one_dim_lin_scale_corr_fraq_del_7_gain_mw_m16_0dBm")
+add_folder = os.path.join(f"{pow_param_num}_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm")
 curr_path = os.getcwd()
 save_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:2"
+device = "cuda:4"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -44,23 +56,17 @@ pa_powers = list(10 ** (np.array(pa_powers) / 10))
 pa_powers = pa_powers[0::2]
 
 # Model initialization
-order = [10, 1]
-delays = [[j, j, j] for j in range(-12, 13)]
+order = [param_num, pow_param_num]
+delays = [[j, j, j] for j in range(-delay_num, delay_num + 1)]
 # Define data type
 # dtype = torch.complex64
 dtype = torch.complex128
-slot_num = 4
 # Indices of slots which are chosen to be included in train/test set (must be of a range type).
 # Elements of train_slots_ind, test_slots_ind must be higher than 0 and lower, than slot_num
 # In full-batch mode train, validation and test dataset are the same.
 # In mini-batch mode validation and test dataset are the same.
-train_slots_ind, validat_slots_ind, test_slots_ind = range(4), range(4), range(4)
+train_slots_ind, validat_slots_ind, test_slots_ind = range(slot_num), range(slot_num), range(slot_num)
 delay_d = 0
-# batch_size == None is equal to batch_size = 1.
-# block_size == None is equal to block_size = signal length.
-# Block size is the same as chunk size 
-batch_size = 1
-chunk_num = 31 * 1 # 31 * 6 # 248, 
 # chunk_size = int(213504/chunk_num)
 chunk_size = int(36846 * len(data_path) * len(train_slots_ind) // chunk_num)
 # print(chunk_size, len(data_path), len(train_slots_ind))
@@ -72,8 +78,8 @@ config_train = None
 # Input signal is padded with pad_zeros zeros at the beginning and ending of input signal.
 # Since each 1d convolution in model CVCNN makes zero-padding with int(kernel_size/2) left and right, then 
 # NO additional padding in the input batches is required.
-pad_zeros = 0
 trans_len = int(len(delays) // 2)
+pad_zeros = trans_len
 dataset = dynamic_dataset_prepare(data_path, pa_powers, dtype, device, slot_num=slot_num, delay_d=delay_d,
                           train_slots_ind=train_slots_ind, test_slots_ind=test_slots_ind, validat_slots_ind=validat_slots_ind,
                           pad_zeros=pad_zeros, batch_size=batch_size, block_size=chunk_size)
@@ -97,7 +103,7 @@ def batch_to_tensors(a):
     return x, d
 
 def complex_mse_loss(d, y, model):
-    error = (d - y)[..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None]
+    error = (d - y)#[..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None]
     return error.abs().square().sum() #+ alpha * sum(torch.norm(p)**2 for p in model.parameters())
 
 def loss(model, signal_batch):
@@ -113,7 +119,8 @@ def quality_criterion(model, dataset):
     targ_pow, loss_val = 0, 0
     for batch in dataset:
         _, d= batch_to_tensors(batch)
-        targ_pow += d[..., trans_len if trans_len > 0 else None: -pad_zeros if pad_zeros > 0 else None].abs().square().sum()
+        targ_pow += d.abs().square().sum()
+        # targ_pow += d[..., trans_len if trans_len > 0 else None: -pad_zeros if pad_zeros > 0 else None].abs().square().sum()
         loss_val += loss(model, batch)
     return 10.0 * torch.log10((loss_val) / (targ_pow)).item()
 

@@ -12,23 +12,29 @@ from utils import dynamic_dataset_prepare
 from scipy.io import loadmat
 from model import ParallelCheby2D
 
+# Simulation parameters
+pow_param_num = 10
 param_num = 10
-delay_num = 12
+delay_num = 8
 slot_num = 4
-# Determine experiment name and create its directory
-# exp_name = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay"
-exp_name = "10_param_4_slot_61_cases_12_delay"
-# exp_name = "test"
-
+# batch_size == None is equal to batch_size = 1.
+# block_size == None is equal to block_size = signal length.
+# Block size is the same as chunk size 
+batch_size = 1
+chunk_num = 4 # 31 * 4
 model_eval = "train"
 # model_eval = "test"
+# Determine experiment name and create its directory
+exp_name = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay"
+# exp_name = "10_param_4_slot_61_cases_8_delay"
+# exp_name = "test"
 
-add_folder = os.path.join("one_dim_lin_scale_corr_fraq_del_7_gain_mw_m16_0dBm")
+add_folder = os.path.join(f"{pow_param_num}_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm")
 curr_path = os.getcwd()
 load_path = os.path.join(curr_path, add_folder, exp_name)
 # os.mkdir(save_path)
 
-device = "cuda:4"
+device = "cuda:3"
 # device = "cpu"
 seed = 964
 torch.manual_seed(seed)
@@ -61,7 +67,7 @@ else:
     raise ValueError
 
 # Model initialization
-order = [param_num, 1]
+order = [param_num, pow_param_num]
 delays = [[j, j, j] for j in range(-delay_num, delay_num + 1)]
 # Define data type
 # dtype = torch.complex64
@@ -73,11 +79,6 @@ slot_num = 4
 # In mini-batch mode validation and test dataset are the same.
 train_slots_ind, validat_slots_ind, test_slots_ind = range(slot_num), range(slot_num), range(slot_num)
 delay_d = 0
-# batch_size == None is equal to batch_size = 1.
-# block_size == None is equal to block_size = signal length.
-# Block size is the same as chunk size 
-batch_size = 1
-chunk_num = 31 * 1
 # chunk_size = int(213504/chunk_num)
 chunk_size = int(36846 * len(data_path) * len(train_slots_ind) // chunk_num)
 # L2 regularization parameter
@@ -87,8 +88,8 @@ config_train = None
 # Input signal is padded with pad_zeros zeros at the beginning and ending of input signal.
 # Since each 1d convolution in model CVCNN makes zero-padding with int(kernel_size/2) left and right, then 
 # NO additional padding in the input batches is required.
-pad_zeros = 0
 trans_len = int(len(delays) // 2)
+pad_zeros = trans_len
 dataset = dynamic_dataset_prepare(data_path, pa_powers, dtype, device, slot_num=slot_num, delay_d=delay_d,
                           train_slots_ind=train_slots_ind, test_slots_ind=test_slots_ind, validat_slots_ind=validat_slots_ind,
                           pad_zeros=pad_zeros, batch_size=batch_size, block_size=chunk_size)
@@ -112,7 +113,8 @@ def batch_to_tensors(a):
     return x, d
 
 def complex_mse_loss(d, y, model):
-    error = (d - y)[..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None]
+    # d = d[..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None]
+    error = (d - y)
     return error.abs().square().sum() #+ alpha * sum(torch.norm(p)**2 for p in model.parameters())
 
 def loss(model, signal_batch):
@@ -127,8 +129,8 @@ def loss(model, signal_batch):
 def quality_criterion(model, dataset):
     targ_pow, loss_val = 0, 0
     for batch in dataset:
-        _, d= batch_to_tensors(batch)
-        targ_pow += d[..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None].abs().square().sum()
+        _, d = batch_to_tensors(batch)
+        targ_pow += d.abs().square().sum()
         loss_val += loss(model, batch)
     return 10.0 * torch.log10((loss_val) / (targ_pow)).item()
 
@@ -177,12 +179,9 @@ with torch.no_grad():
     for j, batch in enumerate(dataset):
         data = batch_to_tensors(batch)
 
-        # [..., pad_zeros if pad_zeros > 0 else None: -pad_zeros if pad_zeros > 0 else None]
-        # print(data[1][0, 0, :].size(), data[1][0, 0, :][..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None].size())
-        y.append(model(data[0])[0, 0, :][..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None])
-        d.append(data[1][0, 0, :][..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None])
-        x.append(data[0][0, 0, :][..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None])
-        # print(x[-1].size(), d[-1].size(), y[-1].size())
+        y.append(model(data[0])[0, 0, :])#[..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None])
+        d.append(data[1][0, 0, :])#[..., trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None])
+        x.append(data[0][0, 0, trans_len if trans_len > 0 else None: -trans_len if trans_len > 0 else None])
 
     y_full = torch.cat(y, dim=-1).detach().cpu().numpy()
     d_full = torch.cat(d, dim=-1).detach().cpu().numpy()

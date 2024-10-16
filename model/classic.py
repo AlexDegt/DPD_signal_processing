@@ -23,6 +23,7 @@ class ParallelCheby2D(nn.Module):
         self.delay_inp = Delay(delays_input, dtype, device)
         self.delay_out = Delay(delays_output, dtype, device)
         self.cells = nn.ModuleList()
+        self.trans_len = int(len(delays) // 2)
         for i in range(len(delays)):
             self.cells.append(Cheby2D(order, dtype, device))
     
@@ -30,4 +31,4 @@ class ParallelCheby2D(nn.Module):
         x_in = self.delay_out(x[:, :1, :])
         x_curr = self.delay_inp(x)
         output = sum([x_in[:, j_branch, ...] * cell(x_curr[:, j_branch, ...]) for j_branch, cell in enumerate(self.cells)])
-        return output
+        return output[..., self.trans_len if self.trans_len > 0 else None: -self.trans_len if self.trans_len > 0 else None]
