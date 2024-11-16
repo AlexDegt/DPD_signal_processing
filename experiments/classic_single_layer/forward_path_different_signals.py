@@ -23,17 +23,11 @@ slot_num = 4
 # Block size is the same as chunk size 
 batch_size = 1
 chunk_num = 1 # 31 * 4
-model_eval = "train"
-# model_eval = "test"
-
-# Determine experiment name and create its directory
-exp_name = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay"
-# exp_name = "10_param_4_slot_61_cases_8_delay"
-# exp_name = "test"
-
-add_folder = os.path.join(f"{pow_param_num}_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm")
-curr_path = os.getcwd()
-load_path = os.path.join(curr_path, add_folder, exp_name)
+# Index of signal to take parameters from
+# 0 - low power -16 dBm input, -1 - high power -1 dBm input,
+ind_param = 38
+# Index of signal to apply model to
+ind_apply = 25
 
 device = "cuda:4"
 # device = "cpu"
@@ -50,22 +44,22 @@ if device != "cpu":
 folder_path = '../../data/single_band_dynamic'
 data_path = [os.path.join(folder_path, file_name) for file_name in sorted(os.listdir(folder_path), reverse=True)]
 data_path = [path for path in data_path if ".mat" in path]
-if model_eval == "train":
-    data_path = data_path[0::2]
-elif model_eval == "test":
-    data_path = data_path[1::2]
-else:
-    raise ValueError
+data_path_apply = [data_path[ind_apply]]
 
 # For train
 pa_powers = np.load(os.path.join(folder_path, "pa_powers_round.npy"))
+pa_powers_param = [pa_powers[ind_param]]
+pa_powers_apply = [pa_powers[ind_apply]]
 pa_powers = list(10 ** (np.array(pa_powers) / 10))
-if model_eval == "train":
-    pa_powers = pa_powers[0::2]
-elif model_eval == "test":
-    pa_powers = pa_powers[1::2]
-else:
-    raise ValueError
+
+# Determine experiment name and create its directory
+exp_name_param = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay_power_{pa_powers_param[0]}_dBm"
+exp_name_apply = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay_power_{pa_powers_apply[0]}_dBm"
+
+add_folder = os.path.join(f"{pow_param_num}_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm", "each_case_separately")
+curr_path = os.getcwd()
+load_path_param = os.path.join(curr_path, add_folder, exp_name_param)
+save_path_apply = os.path.join(curr_path, add_folder, exp_name_apply)
 
 # Model initialization
 order = [param_num, pow_param_num]
@@ -81,7 +75,7 @@ slot_num = 4
 train_slots_ind, validat_slots_ind, test_slots_ind = range(slot_num), range(slot_num), range(slot_num)
 delay_d = 0
 # chunk_size = int(213504/chunk_num)
-chunk_size = int(36846 * len(data_path) * len(train_slots_ind) // chunk_num)
+chunk_size = int(36846 * len(data_path_apply) * len(train_slots_ind) // chunk_num)
 # L2 regularization parameter
 alpha = 0.0
 # Configuration file
@@ -91,7 +85,7 @@ config_train = None
 # NO additional padding in the input batches is required.
 trans_len = int(len(delays) // 2)
 pad_zeros = trans_len
-dataset = dynamic_dataset_prepare(data_path, pa_powers, dtype, device, slot_num=slot_num, delay_d=delay_d,
+dataset = dynamic_dataset_prepare(data_path_apply, list(10 ** (np.array(pa_powers_apply) / 10)), dtype, device, slot_num=slot_num, delay_d=delay_d,
                         train_slots_ind=train_slots_ind, test_slots_ind=test_slots_ind, validat_slots_ind=validat_slots_ind,
                         pad_zeros=pad_zeros, batch_size=batch_size, block_size=chunk_size)
 
@@ -167,7 +161,7 @@ print(f"Current model parameters number is {count_parameters(model)}")
 # params = [(name, p.size(), p.dtype) for name, p in model.named_parameters()]
 # print(params)
 
-set_weights(model, load_weights(load_path + r'/weights_best_test_' + exp_name))
+set_weights(model, load_weights(load_path_param + r'/weights_best_test_' + exp_name_param))
 # set_weights(model, load_weights(load_path + r'/weights_' + exp_name))
 
 model.eval()
@@ -188,13 +182,6 @@ with torch.no_grad():
     d_full = torch.cat(d, dim=-1).detach().cpu().numpy()
     x_full = torch.cat(x, dim=-1).detach().cpu().numpy()
 
-    if model_eval == "train":
-        np.save(load_path + r'/y.npy', y_full)
-        np.save(load_path + r'/d.npy', d_full)
-        np.save(load_path + r'/x.npy', x_full)
-    elif model_eval == "test":
-        np.save(load_path + r'/y_test.npy', y_full)
-        np.save(load_path + r'/d_test.npy', d_full)
-        np.save(load_path + r'/x_test.npy', x_full)
-    else:
-        raise ValueError
+    np.save(save_path_apply + f'/y_param_{pa_powers_param[0]:.1f}dBm_apply_to_{pa_powers_apply[0]:.1f}dBm.npy', y_full)
+    # np.save(save_path_apply + f'/d_param_{pa_powers_param[0]:.1f}dBm_apply_to_{pa_powers_apply[0]:.1f}dBm.npy', d_full)
+    # np.save(save_path_apply + f'/x_param_{pa_powers_param[0]:.1f}dBm_apply_to_{pa_powers_apply[0]:.1f}dBm.npy', x_full)
