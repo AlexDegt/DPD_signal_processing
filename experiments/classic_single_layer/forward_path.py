@@ -22,7 +22,7 @@ slot_num = 4
 # block_size == None is equal to block_size = signal length.
 # Block size is the same as chunk size 
 batch_size = 1
-chunk_num = 1 # 31 * 4
+chunk_num = 7 # 31 * 4
 model_eval = "train"
 # model_eval = "test"
 
@@ -73,7 +73,6 @@ delays = [[j, j, j] for j in range(-delay_num, delay_num + 1)]
 # Define data type
 # dtype = torch.complex64
 dtype = torch.complex128
-slot_num = 4
 # Indices of slots which are chosen to be included in train/test set (must be of a range type).
 # Elements of train_slots_ind, test_slots_ind must be higher than 0 and lower, than slot_num
 # In full-batch mode train, validation and test dataset are the same.
@@ -97,16 +96,17 @@ dataset = dynamic_dataset_prepare(data_path, pa_powers, dtype, device, slot_num=
 
 train_dataset, validate_dataset, test_dataset = dataset
 
+print(trans_len)
 # Show sizes of batches in train dataset, size of validation and test dataset
-# for i in range(len(dataset)):
-#     for j, batch in enumerate(dataset[i]):
-#         # if j == 0:
-#         # Input batch size
-#         print(batch[0].size())
-#         # Target batch size
-#         print(batch[1].size())
-#     print(j + 1)
-# sys.exit()
+for i in range(len(dataset)):
+    for j, batch in enumerate(dataset[i]):
+        # if j == 0:
+        # Input batch size
+        print(batch[0].size())
+        # Target batch size
+        print(batch[1].size())
+    print(j + 1)
+sys.exit()
 
 def batch_to_tensors(a):
     x = a[0]

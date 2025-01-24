@@ -22,22 +22,11 @@ slot_num = 4
 # block_size == None is equal to block_size = signal length.
 # Block size is the same as chunk size 
 batch_size = 1
-chunk_num = 8 # 31 * 18
+chunk_num = 18 # 31 * 18
 
 for j_exp in range(61):
-    # # Determine experiment name and create its directory
-    # exp_name = f"{param_num}_param_{slot_num}_slot_61_cases_{delay_num}_delay"
-    # # exp_name = "10_param_4_slot_61_cases_8_delay"
-    # # exp_name = "test"
 
-    # # add_folder = os.path.join(f"{pow_param_num}_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm")
-    # add_folder = os.path.join(f"{pow_param_num}_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm", "each_case_separately")
-    
-    # curr_path = os.getcwd()
-    # save_path = os.path.join(curr_path, add_folder, exp_name)
-    # os.mkdir(save_path)
-
-    device = "cuda:4"
+    device = "cuda:3"
     # device = "cpu"
     seed = 964
     torch.manual_seed(seed)
@@ -52,12 +41,12 @@ for j_exp in range(61):
     folder_path = '../../data/single_band_dynamic'
     data_path = [os.path.join(folder_path, file_name) for file_name in sorted(os.listdir(folder_path), reverse=True)]
     data_path = [path for path in data_path if ".mat" in path]
-    # data_path = data_path[0::2]
+    data_path = data_path[0::2]
 
     # For train
     pa_powers = np.load(os.path.join(folder_path, "pa_powers_round.npy"))
     pa_powers = list(10 ** (np.array(pa_powers) / 10))
-    # pa_powers = pa_powers[0::2]
+    pa_powers = pa_powers[0::2]
 
     data_path_all = deepcopy(data_path)
     pa_powers_all = deepcopy(pa_powers)
@@ -74,7 +63,7 @@ for j_exp in range(61):
     
     curr_path = os.getcwd()
     save_path = os.path.join(curr_path, add_folder, exp_name)
-    os.mkdir(save_path)
+    os.makedirs(save_path, exist_ok=False)
 
     # Model initialization
     order = [param_num, pow_param_num]

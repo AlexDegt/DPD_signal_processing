@@ -145,6 +145,15 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     train_input_set = train_input_set.reshape(1, 2, -1)
     train_target_set = train_target_set.reshape(1, 1, -1)
     train_input_set = F.pad(train_input_set, (pad_zeros, pad_zeros))
+    
+    # Pad array of signal with zeros in order not to lose data by implementation of torch.unfold
+    step = int(block_size)
+    pad_unfold_input = (step + 2*pad_zeros - train_input_set.size()[-1] % step) % step
+    train_input_set = F.pad(train_input_set, (0, pad_unfold_input))
+    step = int(block_size_target)
+    pad_unfold_target = (step - train_target_set.size()[-1] % step) % step
+    train_target_set = F.pad(train_target_set, (0, pad_unfold_target))
+
     train_input_set = train_input_set.unfold(2, block_size + 2*pad_zeros, int(block_size))[0, ...].permute(1, 0, 2)
     train_target_set = train_target_set.unfold(2, block_size_target, int(block_size_target))[0, ...].permute(1, 0, 2)
     train_set = tuple((train_input_set, train_target_set))
@@ -156,6 +165,15 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     validat_input_set = validat_input_set.reshape(1, 2, -1)
     validat_target_set = validat_target_set.reshape(1, 1, -1)
     validat_input_set = F.pad(validat_input_set, (pad_zeros, pad_zeros))
+
+    # Pad array of signal with zeros in order not to lose data by implementation of torch.unfold
+    step = int(block_size_validat)
+    pad_unfold_input = (step + 2*pad_zeros - validat_input_set.size()[-1] % step) % step
+    validat_input_set = F.pad(validat_input_set, (0, pad_unfold_input))
+    step = int(block_size_validat_target)
+    pad_unfold_target = (step - validat_target_set.size()[-1] % step) % step
+    validat_target_set = F.pad(validat_target_set, (0, pad_unfold_target))
+
     validat_input_set = validat_input_set.unfold(2, block_size_validat + 2*pad_zeros, block_size_validat)[0, ...].permute(1, 0, 2)
     validat_target_set = validat_target_set.unfold(2, block_size_validat_target, block_size_validat_target)[0, ...].permute(1, 0, 2)
     validat_set = tuple((validat_input_set, validat_target_set))
@@ -167,6 +185,15 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     test_input_set = test_input_set.reshape(1, 2, -1)
     test_target_set = test_target_set.reshape(1, 1, -1)
     test_input_set = F.pad(test_input_set, (pad_zeros, pad_zeros))
+
+    # Pad array of signal with zeros in order not to lose data by implementation of torch.unfold
+    step = int(block_size_test)
+    pad_unfold_input = (step + 2*pad_zeros - test_input_set.size()[-1] % step) % step
+    test_input_set = F.pad(test_input_set, (0, pad_unfold_input))
+    step = int(block_size_test_target)
+    pad_unfold_target = (step - test_target_set.size()[-1] % step) % step
+    test_target_set = F.pad(test_target_set, (0, pad_unfold_target))
+
     test_input_set = test_input_set.unfold(2, block_size_test + 2*pad_zeros, block_size_test)[0, ...].permute(1, 0, 2)
     test_target_set = test_target_set.unfold(2, block_size_test_target, block_size_test_target)[0, ...].permute(1, 0, 2)
     test_set = tuple((test_input_set, test_target_set))
