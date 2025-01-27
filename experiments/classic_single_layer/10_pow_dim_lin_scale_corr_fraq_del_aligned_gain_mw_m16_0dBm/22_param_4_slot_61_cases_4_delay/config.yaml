@@ -18,7 +18,7 @@ batch_size: 1
 # into chunk_num blocks. LS method is implemented to accumulate 
 # hessian and gradient along the whole signal length and save GPU memory.
 # Increase this parameter if you obtain out of memory error.
-chunk_num: 300
+chunk_num: 279
 dtype: complex128
 device: "cuda:0"
 # dtype: complex64

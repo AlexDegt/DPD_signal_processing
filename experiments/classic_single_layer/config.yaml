@@ -1,35 +1,35 @@
 # Simulation description
-trial_descript: Training of 1D Chebyshev polynomial-based model
+trial_descript: Training of 2D Chebyshev polynomial-based model
 # If trial_name == 'None', then name to the experiment is given automatically,
 # otherwise it is set name set by user 
 # trial_name: None
-trial_name: test_1d
+trial_name: test
 # Simulation parameters
 # Number of parameters per power dimension. For single-dimensional model it equals 1
-pow_param_num: 1
+pow_param_num: 10
 # Chebyshev polynomal order
-param_num: 36 # 12
+param_num: 22
 # Model is parallel Chebyshev polynomials, summed at the output
 # Each polynomail is fed by the signals x_n, delayd by delay
 # from the range [-delay_num, delay_num].
-delay_num: 27 # 10
+delay_num: 4
 batch_size: 1
 # chunk_num is important parameter, which allows to divide whole signal
 # into chunk_num blocks. LS method is implemented to accumulate 
 # hessian and gradient along the whole signal length and save GPU memory.
 # Increase this parameter if you obtain out of memory error.
-chunk_num: 500
+chunk_num: 279
 dtype: complex128
-device: "cuda:3"
+device: "cuda:0"
 # dtype: complex64
 # Path to the folder with data
 data_path: '../../data/single_band_dynamic'
 # Allow to overwrite folder with saved results or not
-overwrite_file: True
+overwrite_file: False
 
 # Algorithm parameters 
-train_type: ls # LS-solution
-# train_type: sgd_auto # SGD
+# train_type: ls # LS-solution
+train_type: sgd_auto # SGD
 # train_type: mnm_lev_marq # Mixed Newton with Levenberg-Marquardt adaptive regularization control
 epochs: 3000 # Used in SGD and Mixed Newton
 lr: 0.00002 # Used only in SGD

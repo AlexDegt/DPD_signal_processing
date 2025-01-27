@@ -102,7 +102,7 @@ def train_ls(model: nn.Module, train_dataset: DataLoaderType, validate_dataset: 
             delta_hess, delta_grad = SICOracle.direction_through_jacobian(batch, batch_to_tensors, weight_names=weight_names)
 
             with torch.no_grad():
-                if j % chunk_num == 0:
+                if j == 0:
                     hess = torch.zeros_like(delta_hess)
                     grad = torch.zeros_like(delta_grad)
                 hess += delta_hess
@@ -113,7 +113,7 @@ def train_ls(model: nn.Module, train_dataset: DataLoaderType, validate_dataset: 
         hess_cond = torch.linalg.cond(hess).item()
 
         # Implement LS-step
-        hess_inv = torch.linalg.pinv(hess, rcond=1e-6, hermitian=True)
+        hess_inv = torch.linalg.pinv(hess, rcond=1e-15, hermitian=True)
         direction = -1. * hess_inv @ grad
         x = SICOracle.get_flat_params(name_list=weight_names)
         SICOracle.set_flat_params(x + direction, name_list=weight_names)

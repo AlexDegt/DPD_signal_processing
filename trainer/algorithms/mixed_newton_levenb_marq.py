@@ -139,7 +139,7 @@ def train_mixed_newton_levenb_marq(model: nn.Module, train_dataset: DataLoaderTy
             delta_hess, delta_grad = SICOracle.direction_through_jacobian(batch, batch_to_tensors, weight_names=weight_names)
 
             with torch.no_grad():
-                if j % chunk_num == 0:
+                if j == 0:
                     hess = torch.zeros_like(delta_hess)
                     grad = torch.zeros_like(delta_grad)
                 hess += delta_hess
