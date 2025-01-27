@@ -83,7 +83,7 @@ def train(model: nn.Module, train_dataset: DataLoaderType, loss_fn: LossFnType, 
                                                         save_every, weight_names)
     elif train_type == 'mnm_lev_marq':
         learning_curve, best_criterion = train_mixed_newton_levenb_marq(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
-                                                                        quality_criterion, batch_to_tensors, chunk_num, 
+                                                                        quality_criterion, batch_to_tensors, config_train, chunk_num, 
                                                                         save_path, exp_name, save_every, save_signals, weight_names)
     elif train_type == 'ls':
         learning_curve, best_criterion = train_ls(model, train_dataset, validate_dataset, test_dataset, loss_fn, 

@@ -18,7 +18,7 @@ BatchTensorType = Callable[[Tensor], Tuple[Tensor, ...]]
 
 def train_mixed_newton_levenb_marq(model: nn.Module, train_dataset: DataLoaderType, validate_dataset: DataLoaderType, 
                                    test_dataset: DataLoaderType, loss_fn: LossFnType, quality_criterion: LossFnType, 
-                                   batch_to_tensors: BatchTensorType, chunk_num: OptionalInt = None, 
+                                   batch_to_tensors: BatchTensorType, config_train: dict, chunk_num: OptionalInt = None, 
                                    save_path: OptionalStr = None, exp_name: OptionalStr = None, save_every: OptionalInt = None, 
                                    save_signals: bool = False, weight_names: StrOrList = None):
     """
@@ -61,6 +61,8 @@ def train_mixed_newton_levenb_marq(model: nn.Module, train_dataset: DataLoaderTy
         batch_to_tensors (Callable): Function which acquires signal batch as an input and returns tuple of tensors, where
             the first tensor corresponds to model input, the second one - to the target signal. This function is used to
             obtain differentiable model output tensor to calculate jacobian.
+        config_train (dictionary): Dictionary with configurations of training procedure. Includes learning rate, training type,
+            optimizers parameters etc. Implied to be loaded from .yaml config file.
         chunk_num (int, optional): The number of chunks in dataset. Defaults to "None".
         save_path (str, optional): Folder path to save function product. Defaults to "None".
         exp_name (str, optional): Name of simulation, which is reflected in function product names. Defaults to "None".
@@ -74,7 +76,7 @@ def train_mixed_newton_levenb_marq(model: nn.Module, train_dataset: DataLoaderTy
         Learning curve (list), containing quality criterion calculated each epoch of learning.
     """
     # Algorithm stop criteria parameters
-    epochs = int(3e+3)
+    epochs = config_train["epochs"]
 
     if save_every is None:
         save_every = epochs - 1

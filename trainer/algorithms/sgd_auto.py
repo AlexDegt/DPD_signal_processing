@@ -51,7 +51,9 @@ def train_sgd_auto(model: nn.Module, train_dataset: DataLoaderType, validate_dat
     Returns:
         Learning curve (list), containing quality criterion calculated each epoch of learning.
     """
-    epochs = int(2e+4)
+    epochs = config_train["epochs"]
+    lr = config_train["lr"]
+    betas = config_train["betas"]
 
     if save_every is None:
         save_every = epochs - 1
@@ -72,14 +74,14 @@ def train_sgd_auto(model: nn.Module, train_dataset: DataLoaderType, validate_dat
     weights_norm_curve = []
     weight_decay = 0 # 1e-5
     # optimizer = torch.optim.SGD(model.parameters(), lr=5.e-0, momentum=0.99, weight_decay=weight_decay, nesterov=False)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1.e-0, betas=(0.9, 0.9), weight_decay=weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
     # optimizer = torch.optim.LBFGS(model.parameters(), lr=1e-0, history_size=1000, max_iter=10, line_search_fn="strong_wolfe", tolerance_change=1e-40, tolerance_grad=1e-40)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, \
     #                                                        patience=epochs, threshold=1e-2, threshold_mode='abs')
     
     lambda_lin = lambda epoch: 1#1 - (1 - 1e-1)*epoch/epochs
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_lin)
-    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-2, end_factor=1e-5, total_iters=epochs)
+    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-0, end_factor=1e-0, total_iters=epochs)
 
     print_every = 1
     timer = Timer()
