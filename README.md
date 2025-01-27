@@ -17,6 +17,9 @@
     3. After model training run forward_path.py. It generates:
     - numpy.array PA input (x.npy), PA non-linear distortion output (d.npy) and model output (y.npy) along whole dataset (all 61 PA output power cases 0.069 W - 0.912 W). In order to check PA output in DPD-on mode calculate x + d - y signal. In order to check PA output in DPD-off mode calculate x + d signal. 
     - ACLR performance .pkl files, which include dictionary with "ACLR" and "power_linear" keys. Pay attention, that ACLR is provided in logarithmic scale (dB), whereas power_linear shows PA **output** power in linear scale (W).
+    - Learning curves: NMSE (Normalized Mean Square Error depending on dB) value depending on the number of epoch. NMSE is calculated along the whole dataset (full dynamic range 0.069 W - 0.912 W, 61 cases). Single epoch is related to the passing the training algorithm along the entire length of the training dataset. 
+        - lc_qcrit_train{trial_name}.npy, lc_qcrit_validate{trial_name}.npy, lc_qcrit_test{trial_name}.npy are related to NMSE learning curves, calculated on the training, validation and test datasets correspondingly.
+        - lc_train{trial_name}.npy, lc_validate{trial_name}.npy, lc_test{trial_name}.npy are related to MSE learning curves, calculated on the training, validation and test datasets correspondingly.
 
 - All results, provided in paper Dynamic_DPD.pdf could be visualized by experiments/classic_single_layer/plot_graphs/plot_graphs.py file.
 
