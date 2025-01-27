@@ -4,7 +4,7 @@
 
 - Paper experiments/classic_single_layer/Dynamic_DPD.pdf describes DPD performance achieved by classic 1D and 2D Chebyshev polynomials-based non-linear classic models. Folder experiments/classic_single_layer includes run files and experimental results provided in article.
 
-- **_Reproduction of paper simulations:**
+- **Reproduction of paper simulations:**
     1. Copy config.yaml file from: 
     - experiments/classic_single_layer/1_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm/36_param_4_slot_61_cases_27_delay (for reproduction of 1D Chebyshev polynomials results) or 
     - experiments/classic_single_layer/10_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm/22_param_4_slot_61_cases_4_delay (for reproduction of 2D Chebyshev polynomials results) into classic_single_layer folder.
