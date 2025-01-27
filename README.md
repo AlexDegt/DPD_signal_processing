@@ -1,6 +1,6 @@
 ## **Steps to reproduce the results described in "Dynamic PA power mode DPD on base of 2-dimensional Chebyshev polynomials"**
 
-- Use **master** branch for simulations reproduction and results visualization.
+- Use **main** branch for simulations reproduction and results visualization.
 
 - Paper experiments/classic_single_layer/Dynamic_DPD.pdf describes DPD performance achieved by classic 1D and 2D Chebyshev polynomials-based non-linear classic models. Folder experiments/classic_single_layer includes run files and experimental results provided in article.
 
