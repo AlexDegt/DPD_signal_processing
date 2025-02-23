@@ -29,11 +29,19 @@ class Cheby2D(nn.Module):
         
     def forward(self, input):
         input = torch.abs(input)
-        ind1 = torch.arange(self.order[0], device = self.device)
-        ind2 = torch.arange(self.order[1], device = self.device)
+        ind1 = torch.arange(self.order[0], device = self.device).to(input.dtype)
+        ind2 = torch.arange(self.order[1], device = self.device).to(input.dtype)
         
-        T0 = torch.cos(ind1[:, None] * torch.arccos(input[0, :1, :]))
-        T1 = torch.cos(ind2[:, None] * torch.arccos(input[0, 1:2, :]))
+        print(input.size())
+        print(torch.arccos(input[0, :1, :]).size())
+        print(torch.arccos(input[0, 1:2, :]).size())
+        
+        T0 = torch.cos(ind1[:, None] @ torch.arccos(input[:, :1, :]))
+        T1 = torch.cos(ind2[:, None] @ torch.arccos(input[:, 1:2, :]))
+
+        print(T0.size())
+        print(T1.size())
+        sys.exit()
         
         self.vand = (T0[:, None, :] * T1[None, :, :]).reshape(-1, T0.shape[-1]).T.to(self.dtype)
 

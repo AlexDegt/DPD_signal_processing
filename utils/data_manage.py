@@ -20,7 +20,8 @@ class ResampleDataset(torch.utils.data.Dataset):
     tuple element contains input batch part, the second tuple element contains 
     target batch part.
     """
-    def __init__(self, data: Tuple[torch.Tensor], batch_size: OptionalInt = None, downsample_ratio: OptionalInt = None):
+    def __init__(self, data: Tuple[torch.Tensor], batch_size: OptionalInt = None, downsample_ratio: OptionalInt = None,
+                 aggregate_power: str = "concat"):
         super(ResampleDataset, self).__init__()
         if downsample_ratio is None:
             downsample_ratio = 1
@@ -31,20 +32,31 @@ class ResampleDataset(torch.utils.data.Dataset):
             self.batch_num = int(np.ceil(data[0].shape[0]/batch_size))
         self.data = tuple((data[0], data[1]))
         self.batch_size = int(batch_size)
+        self.aggregate_power = aggregate_power
     def __getitem__(self, index: int) -> Tuple[torch.Tensor]:
-        if index < self.batch_num -  1:
-            return tuple((self.data[0][index*self.batch_size:(index+1)*self.batch_size, ...], 
-                            self.data[1][index*self.batch_size:(index+1)*self.batch_size, ...]))
-        if index == self.batch_num -  1:
-            return tuple((self.data[0][index*self.batch_size:, ...], 
-                            self.data[1][index*self.batch_size:, ...]))
+        if self.aggregate_power == "concat":
+            if index < self.batch_num -  1:
+                return tuple((self.data[0][index*self.batch_size:(index+1)*self.batch_size, ...], 
+                                self.data[1][index*self.batch_size:(index+1)*self.batch_size, ...]))
+            if index == self.batch_num -  1:
+                return tuple((self.data[0][index*self.batch_size:, ...], 
+                                self.data[1][index*self.batch_size:, ...]))
+        elif self.aggregate_power == "batch":
+            if index < self.batch_num -  1:
+                return tuple((self.data[0][index*self.batch_size:(index+1)*self.batch_size, ...][0, ...], 
+                                self.data[1][index*self.batch_size:(index+1)*self.batch_size, ...][0, ...]))
+            if index == self.batch_num -  1:
+                return tuple((self.data[0][index*self.batch_size:, ...][0, ...], 
+                                self.data[1][index*self.batch_size:, ...][0, ...]))
+        else:
+            raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {self.aggregate_power} is given.")
     def __len__(self) -> int:
         return self.batch_num
 
 def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype: torch.dtype = torch.complex128, device: str = 'cuda', batch_size: OptionalInt = None, 
                     block_size: OptionalInt = None, slot_num: OptionalInt = None, pad_zeros: OptionalInt = None, 
                     delay_d: OptionalInt = None, train_slots_ind: range = range(1), validat_slots_ind: range = range(1),
-                    test_slots_ind: range = range(1)) -> DatasetType:
+                    test_slots_ind: range = range(1), aggregate_power: str = "concat") -> DatasetType:
     """
     The method extracts input and target data for the mat file, normalizes and resamples if necessary.
     Then it divides input and target tensors into the batches and loads them into the dataloader.
@@ -66,7 +78,10 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
         validat_slots_ind (range): Used only for hold-out cross-validation. Indices of the slots which are chosen for validation dataset. 
             A range with step 1. Defaults is range(1).
         test_slots_ind (range): Indices of the slots which are chosen for training dataset. A range with step 1. Defaults is range(1).
-            
+        aggregate_power (str): The flag which illustrates how to aggragate data corresponding to different PA output powers.
+            "concat" - concatenate signals into single vector,
+            "batch" - put signals for different powers into batch dimension.
+
     Returns:
         Tuple of iterables.
     """
@@ -142,8 +157,14 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     
     train_input_set = input[..., train_slots_ind[0] * slot_input_size: train_slots_ind[0] * slot_input_size + input_train_size]
     train_target_set = target[..., train_slots_ind[0] * slot_target_size: train_slots_ind[0] * slot_target_size + target_train_size]
-    train_input_set = train_input_set.reshape(1, 2, -1)
-    train_target_set = train_target_set.reshape(1, 1, -1)
+    if aggregate_power == "concat":
+        train_input_set = train_input_set.reshape(1, 2, -1)
+        train_target_set = train_target_set.reshape(1, 1, -1)
+    elif aggregate_power == "batch":
+        train_input_set = train_input_set.reshape(len(pa_list), 2, -1)
+        train_target_set = train_target_set.reshape(len(pa_list), 1, -1)
+    else:
+        raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     train_input_set = F.pad(train_input_set, (pad_zeros, pad_zeros))
     
     # Pad array of signal with zeros in order not to lose data by implementation of torch.unfold
@@ -154,16 +175,28 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     pad_unfold_target = (step - train_target_set.size()[-1] % step) % step
     train_target_set = F.pad(train_target_set, (0, pad_unfold_target))
 
-    train_input_set = train_input_set.unfold(2, block_size + 2*pad_zeros, int(block_size))[0, ...].permute(1, 0, 2)
-    train_target_set = train_target_set.unfold(2, block_size_target, int(block_size_target))[0, ...].permute(1, 0, 2)
+    if aggregate_power == "concat":
+        train_input_set = train_input_set.unfold(2, block_size + 2*pad_zeros, int(block_size))[0, ...].permute(1, 0, 2)
+        train_target_set = train_target_set.unfold(2, block_size_target, int(block_size_target))[0, ...].permute(1, 0, 2)
+    elif aggregate_power == "batch":
+        train_input_set = train_input_set.unfold(2, block_size + 2*pad_zeros, int(block_size)).permute(2, 0, 1, 3)
+        train_target_set = train_target_set.unfold(2, block_size_target, int(block_size_target)).permute(2, 0, 1, 3)
+    else:
+        raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     train_set = tuple((train_input_set, train_target_set))
-    train_set = ResampleDataset(train_set, batch_size=batch_size)
+    train_set = ResampleDataset(train_set, batch_size=batch_size, aggregate_power=aggregate_power)
     train_set = torch.utils.data.DataLoader(train_set, batch_size=None)
     
     validat_input_set = input[..., validat_slots_ind[0] * slot_input_size: validat_slots_ind[0] * slot_input_size + input_validat_size]
     validat_target_set = target[..., validat_slots_ind[0] * slot_target_size: validat_slots_ind[0] * slot_target_size + target_validat_size]
-    validat_input_set = validat_input_set.reshape(1, 2, -1)
-    validat_target_set = validat_target_set.reshape(1, 1, -1)
+    if aggregate_power == "concat":
+        validat_input_set = validat_input_set.reshape(1, 2, -1)
+        validat_target_set = validat_target_set.reshape(1, 1, -1)
+    elif aggregate_power == "batch":
+        validat_input_set = validat_input_set.reshape(len(pa_list), 2, -1)
+        validat_target_set = validat_target_set.reshape(len(pa_list), 1, -1)
+    else:
+        raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     validat_input_set = F.pad(validat_input_set, (pad_zeros, pad_zeros))
 
     # Pad array of signal with zeros in order not to lose data by implementation of torch.unfold
@@ -174,16 +207,28 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     pad_unfold_target = (step - validat_target_set.size()[-1] % step) % step
     validat_target_set = F.pad(validat_target_set, (0, pad_unfold_target))
 
-    validat_input_set = validat_input_set.unfold(2, block_size_validat + 2*pad_zeros, block_size_validat)[0, ...].permute(1, 0, 2)
-    validat_target_set = validat_target_set.unfold(2, block_size_validat_target, block_size_validat_target)[0, ...].permute(1, 0, 2)
+    if aggregate_power == "concat":
+        validat_input_set = validat_input_set.unfold(2, block_size_validat + 2*pad_zeros, block_size_validat)[0, ...].permute(1, 0, 2)
+        validat_target_set = validat_target_set.unfold(2, block_size_validat_target, block_size_validat_target)[0, ...].permute(1, 0, 2)
+    elif aggregate_power == "batch":
+        validat_input_set = validat_input_set.unfold(2, block_size_validat + 2*pad_zeros, block_size_validat).permute(2, 0, 1, 3)
+        validat_target_set = validat_target_set.unfold(2, block_size_validat_target, block_size_validat_target).permute(2, 0, 1, 3)
+    else:
+        raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     validat_set = tuple((validat_input_set, validat_target_set))
-    validat_set = ResampleDataset(validat_set, batch_size=batch_size)
+    validat_set = ResampleDataset(validat_set, batch_size=batch_size, aggregate_power=aggregate_power)
     validat_set = torch.utils.data.DataLoader(validat_set, batch_size=None)
 
     test_input_set = input[..., test_slots_ind[0] * slot_input_size: test_slots_ind[0] * slot_input_size + input_test_size]
     test_target_set = target[..., test_slots_ind[0] * slot_target_size: test_slots_ind[0] * slot_target_size + target_test_size]
-    test_input_set = test_input_set.reshape(1, 2, -1)
-    test_target_set = test_target_set.reshape(1, 1, -1)
+    if aggregate_power == "concat":
+        test_input_set = test_input_set.reshape(1, 2, -1)
+        test_target_set = test_target_set.reshape(1, 1, -1)
+    elif aggregate_power == "batch":
+        test_input_set = test_input_set.reshape(len(pa_list), 2, -1)
+        test_target_set = test_target_set.reshape(len(pa_list), 1, -1)
+    else:
+        raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     test_input_set = F.pad(test_input_set, (pad_zeros, pad_zeros))
 
     # Pad array of signal with zeros in order not to lose data by implementation of torch.unfold
@@ -194,10 +239,16 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     pad_unfold_target = (step - test_target_set.size()[-1] % step) % step
     test_target_set = F.pad(test_target_set, (0, pad_unfold_target))
 
-    test_input_set = test_input_set.unfold(2, block_size_test + 2*pad_zeros, block_size_test)[0, ...].permute(1, 0, 2)
-    test_target_set = test_target_set.unfold(2, block_size_test_target, block_size_test_target)[0, ...].permute(1, 0, 2)
+    if aggregate_power == "concat":
+        test_input_set = test_input_set.unfold(2, block_size_test + 2*pad_zeros, block_size_test)[0, ...].permute(1, 0, 2)
+        test_target_set = test_target_set.unfold(2, block_size_test_target, block_size_test_target)[0, ...].permute(1, 0, 2)
+    elif aggregate_power == "batch":
+        test_input_set = test_input_set.unfold(2, block_size_test + 2*pad_zeros, block_size_test).permute(2, 0, 1, 3)
+        test_target_set = test_target_set.unfold(2, block_size_test_target, block_size_test_target).permute(2, 0, 1, 3)
+    else:
+        raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     test_set = tuple((test_input_set, test_target_set))
-    test_set = ResampleDataset(test_set, batch_size=batch_size)
+    test_set = ResampleDataset(test_set, batch_size=batch_size, aggregate_power=aggregate_power)
     test_set = torch.utils.data.DataLoader(test_set, batch_size=None)
     
     dataset.append(tuple((train_set, validat_set, test_set)))
