@@ -161,8 +161,8 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
         train_input_set = train_input_set.reshape(1, 2, -1)
         train_target_set = train_target_set.reshape(1, 1, -1)
     elif aggregate_power == "batch":
-        train_input_set = train_input_set.reshape(len(pa_list), 2, -1)
-        train_target_set = train_target_set.reshape(len(pa_list), 1, -1)
+        train_input_set = train_input_set.view(len(pa_list), 2, -1)
+        train_target_set = train_target_set.view(len(pa_list), 1, -1)
     else:
         raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     train_input_set = F.pad(train_input_set, (pad_zeros, pad_zeros))
@@ -193,8 +193,8 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
         validat_input_set = validat_input_set.reshape(1, 2, -1)
         validat_target_set = validat_target_set.reshape(1, 1, -1)
     elif aggregate_power == "batch":
-        validat_input_set = validat_input_set.reshape(len(pa_list), 2, -1)
-        validat_target_set = validat_target_set.reshape(len(pa_list), 1, -1)
+        validat_input_set = validat_input_set.view(len(pa_list), 2, -1)
+        validat_target_set = validat_target_set.view(len(pa_list), 1, -1)
     else:
         raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     validat_input_set = F.pad(validat_input_set, (pad_zeros, pad_zeros))
@@ -225,8 +225,8 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
         test_input_set = test_input_set.reshape(1, 2, -1)
         test_target_set = test_target_set.reshape(1, 1, -1)
     elif aggregate_power == "batch":
-        test_input_set = test_input_set.reshape(len(pa_list), 2, -1)
-        test_target_set = test_target_set.reshape(len(pa_list), 1, -1)
+        test_input_set = test_input_set.view(len(pa_list), 2, -1)
+        test_target_set = test_target_set.view(len(pa_list), 1, -1)
     else:
         raise ValueError(f"aggregate_power must equal \'concat\' or \'batch\', but {aggregate_power} is given.")
     test_input_set = F.pad(test_input_set, (pad_zeros, pad_zeros))

@@ -32,18 +32,28 @@ class Cheby2D(nn.Module):
         ind1 = torch.arange(self.order[0], device = self.device).to(input.dtype)
         ind2 = torch.arange(self.order[1], device = self.device).to(input.dtype)
         
-        print(input.size())
-        print(torch.arccos(input[0, :1, :]).size())
-        print(torch.arccos(input[0, 1:2, :]).size())
+        # print(input.size())
+        # print(torch.arccos(input[0, :1, :]).size())
+        # print(torch.arccos(input[0, 1:2, :]).size())
         
-        T0 = torch.cos(ind1[:, None] @ torch.arccos(input[:, :1, :]))
-        T1 = torch.cos(ind2[:, None] @ torch.arccos(input[:, 1:2, :]))
+        T0 = torch.cos(ind1[:, None] @ torch.arccos(input[:, :1, :])).permute(0, 2, 1)
+        T1 = torch.cos(ind2[:, None] @ torch.arccos(input[:, 1:2, :])).permute(0, 2, 1)
 
-        print(T0.size())
-        print(T1.size())
-        sys.exit()
+        # print(T0.unsqueeze(-1).size())
+        # print(T1.unsqueeze(-2).size())
+        # print((T0[:, None, :] * T1[:, :, None]).reshape(T0.shape[0], T0.shape[1]*T1.shape[1], T0.shape[-1]).size())
         
-        self.vand = (T0[:, None, :] * T1[None, :, :]).reshape(-1, T0.shape[-1]).T.to(self.dtype)
+        # print((T0.unsqueeze(-1) * T1.unsqueeze(-2)).size())
+        # sys.exit()
 
-        approx = (self.vand @ self.weight)[None, None, :]
+        self.vand = (T0.unsqueeze(-1) * T1.unsqueeze(-2)).view(T0.shape[0], T0.shape[1], -1).to(self.dtype)
+        # self.vand = (T0[:, None, :] * T1[None, :, :]).reshape(-1, T0.shape[-1]).T.to(self.dtype)
+
+        # print((self.vand @ self.weight)[:, None, :].size())
+        # sys.exit()
+
+        approx = (self.vand @ self.weight)[:, None, :]
+        # print(approx.size())
+        # sys.exit()
+        # approx = (self.vand @ self.weight)[None, None, :]
         return approx
