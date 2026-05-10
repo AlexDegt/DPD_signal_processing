@@ -2,8 +2,11 @@ import torch
 from torch import nn, Tensor
 from typing import Tuple, Union, Callable, List
 import numpy as np
+import torch_optimizer as optim
+# from adan_pytorch import Adan
+from .complex_optim import ComplexAdam
 
-import sys
+import sys, os
 sys.path.append('../../')
 
 from utils import Timer
@@ -55,6 +58,9 @@ def train_sgd_auto(model: nn.Module, train_dataset: DataLoaderType, validate_dat
     lr = config_train["lr"]
     betas = config_train["betas"]
 
+    # Parameter shows whether to addumulate gradient among whole dataset or not.
+    accum_grad = config_train["accum_grad"]
+
     if save_every is None:
         save_every = epochs - 1
 
@@ -73,15 +79,39 @@ def train_sgd_auto(model: nn.Module, train_dataset: DataLoaderType, validate_dat
     grad_norm_curve = []
     weights_norm_curve = []
     weight_decay = 0 # 1e-5
-    # optimizer = torch.optim.SGD(model.parameters(), lr=5.e-0, momentum=0.99, weight_decay=weight_decay, nesterov=False)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.0, weight_decay=weight_decay, nesterov=False)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
+    optimizer = ComplexAdam(model.parameters(), lr=lr, betas=betas, mode="full")
+    # optimizer = torch.optim.NAdam(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
+    
     # optimizer = torch.optim.LBFGS(model.parameters(), lr=1e-0, history_size=1000, max_iter=10, line_search_fn="strong_wolfe", tolerance_change=1e-40, tolerance_grad=1e-40)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, \
     #                                                        patience=epochs, threshold=1e-2, threshold_mode='abs')
-    
+    # optimizer = optim.DiffGrad(model.parameters(),
+    #     lr=lr,
+    #     betas=betas,
+    # )
+
+    # optimizer = Adan(
+    #     model.parameters(),
+    #     lr = lr,
+    #     betas = (0.02, 0.08, 0.01),
+    #     weight_decay = 0.02
+    # )
+
+    # optimizer = optim.QHAdam(
+    #     model.parameters(),
+    #     lr=lr,
+    #     betas=betas,
+    #     nus=(1.0, 1.0),
+    #     weight_decay=0,
+    #     decouple_weight_decay=False,
+    #     eps=1e-8,
+    # )
+
     lambda_lin = lambda epoch: 1#1 - (1 - 1e-1)*epoch/epochs
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_lin)
-    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-0, end_factor=1e-0, total_iters=epochs)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_lin)
+    # scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-0, end_factor=1e-3, total_iters=5340 * epochs)
 
     print_every = 1
     timer = Timer()
@@ -96,86 +126,115 @@ def train_sgd_auto(model: nn.Module, train_dataset: DataLoaderType, validate_dat
 
     # Calculate initial values of loss and quality criterion on validation and test dataset
     with torch.no_grad():
-        loss_val_test = accum_loss(test_dataset)
-        criterion_val_test = quality_criterion(model, test_dataset)
-        best_criterion_test = criterion_val_test
-        learning_curve_test.append(loss_val_test)
-        learning_curve_test_qcrit.append(criterion_val_test)
-        print("Begin: loss = {:.4e}, quality_criterion_test = {:.8f} dB.".format(loss_val_test, criterion_val_test))
-        loss_val_train = accum_loss(train_dataset)
-        criterion_val_train = quality_criterion(model, train_dataset)
-        learning_curve_train.append(loss_val_train)   
-        learning_curve_train_qcrit.append(criterion_val_train)
-        print("Begin: loss = {:.4e}, quality_criterion_train = {:.8f} dB.".format(loss_val_train, criterion_val_train))
-        loss_val_validate = accum_loss(validate_dataset)
-        criterion_val_validate = quality_criterion(model, validate_dataset)
-        learning_curve_validate.append(loss_val_validate)
-        learning_curve_validate_qcrit.append(criterion_val_validate)
-        print("Begin: loss = {:.4e}, quality_criterion_validate = {:.8f} dB.".format(loss_val_validate, criterion_val_validate))
+        # loss_val_test = accum_loss(test_dataset)
+        # criterion_val_test = quality_criterion(model, test_dataset)
+        # best_criterion_test = criterion_val_test
+        best_criterion_test = 0
+        # learning_curve_test.append(loss_val_test)
+        # learning_curve_test_qcrit.append(criterion_val_test)
+        # print("Begin: loss = {:.4e}, quality_criterion_test = {:.8f} dB.".format(loss_val_test, criterion_val_test))
+        # loss_val_train = accum_loss(train_dataset)
+        # criterion_val_train = quality_criterion(model, train_dataset)
+        # learning_curve_train.append(loss_val_train)   
+        # learning_curve_train_qcrit.append(criterion_val_train)
+        # print("Begin: loss = {:.4e}, quality_criterion_train = {:.8f} dB.".format(loss_val_train, criterion_val_train))
+        # loss_val_validate = accum_loss(validate_dataset)
+        # criterion_val_validate = quality_criterion(model, validate_dataset)
+        # learning_curve_validate.append(loss_val_validate)
+        # learning_curve_validate_qcrit.append(criterion_val_validate)
+        # print("Begin: loss = {:.4e}, quality_criterion_validate = {:.8f} dB.".format(loss_val_validate, criterion_val_validate))
     
     for epoch in range(epochs):
         timer.__enter__()
-        for j, batch in enumerate(train_dataset):
-            def closure():
+        # Gradient is accumulated among all batches in training dataset
+        # and optimization step is implemented at the and of epoch.
+        # Full gradient descent.
+        if accum_grad:
+            optimizer.zero_grad()
+            for j, batch in enumerate(train_dataset):
+                # def closure():
+                #     loss_val = loss_fn(model, batch)
+                #     loss_val.backward(create_graph=False)
+                #     return loss_val
+                loss_val = loss_fn(model, batch)
+                loss_val.backward(create_graph=False)
+            # optimizer.step(closure)
+            optimizer.step()
+            scheduler.step()
+            # scheduler.step(criterion_val)
+        # Gradient is stochastic and optimization step is implemented every batch.
+        # Stochastic gradient descent.
+        else:
+            for j_batch, batch in enumerate(train_dataset):
+                # def closure():
+                #     optimizer.zero_grad()
+                #     loss_val = loss_fn(model, batch)
+                #     loss_val.backward(create_graph=False)
+                #     return loss_val
                 optimizer.zero_grad()
                 loss_val = loss_fn(model, batch)
                 loss_val.backward(create_graph=False)
-                return loss_val
-            optimizer.step(closure)
-            scheduler.step()
-            # scheduler.step(criterion_val)
+                optimizer.step()
+                scheduler.step()
         
-        # Track NMSE values on validation and test dataset and save gradient, model parameters norm history
-        with torch.no_grad():
-            if epoch % save_every == 0:
+                # Track NMSE values on validation and test dataset and save gradient, model parameters norm history
+                with torch.no_grad():
+                    if epoch % save_every == 0:
 
-                # Track algorithm parameters
-                curr_params = torch.cat([p.view(-1) for p in model.parameters() if p.requires_grad == True], dim=0)
-                grad = torch.cat([p.grad.view(-1) for p in model.parameters() if p.requires_grad == True], dim=0)
-                grad_distr = [torch.norm(p.grad).item() for p in model.parameters() if p.requires_grad == True]
-                mu = scheduler.get_last_lr()[0]
-                grad_norm = torch.norm(grad).item()
-                grad_norm_curve.append(grad_norm)
-                weights_norm_curve.append(torch.norm(curr_params).item())
-                lrs.append(mu)
+                        # Track algorithm parameters
+                        curr_params = torch.cat([p.view(-1) for p in model.parameters() if p.requires_grad == True], dim=0)
+                        grad = torch.cat([p.grad.view(-1) for p in model.parameters() if p.requires_grad == True], dim=0)
+                        grad_distr = [torch.norm(p.grad).item() for p in model.parameters() if p.requires_grad == True]
+                        mu = scheduler.get_last_lr()[0]
+                        grad_norm = torch.norm(grad).item()
+                        grad_norm_curve.append(grad_norm)
+                        weights_norm_curve.append(torch.norm(curr_params).item())
+                        lrs.append(mu)
 
-                loss_val_train = accum_loss(train_dataset)
-                criterion_val_train = quality_criterion(model, train_dataset)
-                loss_val_test = accum_loss(test_dataset)
-                criterion_val_test = quality_criterion(model, test_dataset)
-                loss_val_validate = accum_loss(validate_dataset)
-                criterion_val_validate = quality_criterion(model, validate_dataset)
+                        # loss_val_train = accum_loss(train_dataset)
+                        # criterion_val_train = quality_criterion(model, train_dataset)
+                        # loss_val_test = accum_loss(test_dataset)
+                        criterion_val_test = quality_criterion(model, test_dataset)
+                        # loss_val_validate = accum_loss(validate_dataset)
+                        # criterion_val_validate = quality_criterion(model, validate_dataset)
 
-                learning_curve_test.append(loss_val_test)
-                learning_curve_train.append(loss_val_train)
-                learning_curve_validate.append(loss_val_validate)
-                learning_curve_test_qcrit.append(criterion_val_test)
-                learning_curve_train_qcrit.append(criterion_val_train)
-                learning_curve_validate_qcrit.append(criterion_val_validate)
+                        # learning_curve_test.append(loss_val_test)
+                        # learning_curve_train.append(loss_val_train)
+                        # learning_curve_validate.append(loss_val_validate)
+                        learning_curve_test_qcrit.append(criterion_val_test)
+                        # learning_curve_train_qcrit.append(criterion_val_train)
+                        # learning_curve_validate_qcrit.append(criterion_val_validate)
 
-                if criterion_val_test < best_criterion_test:
-                    best_criterion_test = criterion_val_test
-                    torch.save(model.state_dict(), save_path+'weights_best_test'+exp_name)
+                        if criterion_val_test < best_criterion_test:
+                            best_criterion_test = criterion_val_test
+                            torch.save(model.state_dict(), os.path.join(save_path, 'weights_best.pt'))
 
-                    np.save(save_path + f'lc_train{exp_name}.npy', np.array(learning_curve_train))
-                    np.save(save_path + f'lc_test{exp_name}.npy', np.array(learning_curve_test))
-                    np.save(save_path + f'lc_validate{exp_name}.npy', np.array(learning_curve_validate))
-                    np.save(save_path + f'lc_qcrit_train{exp_name}.npy', np.array(learning_curve_train_qcrit))
-                    np.save(save_path + f'lc_qcrit_test{exp_name}.npy', np.array(learning_curve_test_qcrit))
-                    np.save(save_path + f'lc_qcrit_validate{exp_name}.npy', np.array(learning_curve_validate_qcrit))
-                    np.save(save_path + f'grad_norm{exp_name}.npy', np.array(grad_norm_curve))
-                    np.save(save_path + f'grad_distr{exp_name}.npy', np.array(grad_distr))
-                    np.save(save_path + f'param_norm{exp_name}.npy', np.array(weights_norm_curve))
-                    np.save(save_path + f'lrs{exp_name}.npy', np.array(lrs))
-        timer.__exit__()
-        if epoch % print_every == 0:
-            print(f"Epoch is {epoch + 1}, " + \
-                f"loss_train = {loss_val_train:.8f}, " + \
-                f"quality_criterion_train = {criterion_val_train:.8f} dB, stepsize = {mu:.6e}, " + \
-                f"|grad| = {grad_norm:.4e}, time elapsed: {timer.interval:.2e}")
+                        # iter_num = 552 * epoch + j_batch
+                        # # if iter_num == 5060 or iter_num == 7636 or iter_num == 2871:
+                        # if iter_num == 1730 or iter_num == 2501 or iter_num == 14646:
+                        # # if iter_num == 25300 or iter_num == 38180 or iter_num == 14355:
+                        #     torch.save(model.state_dict(), os.path.join(save_path, f'weights_{iter_num}_iter.pt'))
 
-        general_timer.__exit__()
-        print(f"Total time elapsed: {general_timer.interval} s")
+                        # np.save(os.path.join(save_path, f'lc_train{exp_name}.npy'), np.array(learning_curve_train))
+                        # np.save(os.path.join(save_path, f'lc_test{exp_name}.npy'), np.array(learning_curve_test))
+                        # np.save(os.path.join(save_path, f'lc_validate{exp_name}.npy'), np.array(learning_curve_validate))
+                        # np.save(os.path.join(save_path, f'lc_qcrit_train{exp_name}.npy'), np.array(learning_curve_train_qcrit))
+                        np.save(os.path.join(save_path, f'lc_qcrit_test{exp_name}.npy'), np.array(learning_curve_test_qcrit))
+                        # np.save(os.path.join(save_path, f'lc_qcrit_validate{exp_name}.npy'), np.array(learning_curve_validate_qcrit))
+                        np.save(os.path.join(save_path, f'grad_norm{exp_name}.npy'), np.array(grad_norm_curve))
+                        np.save(os.path.join(save_path, f'grad_distr{exp_name}.npy'), np.array(grad_distr))
+                        np.save(os.path.join(save_path, f'param_norm{exp_name}.npy'), np.array(weights_norm_curve))
+                        np.save(os.path.join(save_path, f'lrs{exp_name}.npy'), np.array(lrs))
+                timer.__exit__()
+                if epoch % print_every == 0:
+                    print(f"Epoch is {epoch + 1}, " + \
+                        f"Batch is {j_batch + 1}, " + \
+                        # f"loss_train = {loss_val_train:.8f}, " + \
+                        f"quality_criterion_train = {criterion_val_test:.8f} dB, stepsize = {mu:.6e}, " + \
+                        f"|grad| = {grad_norm:.4e}, time elapsed: {timer.interval:.2e}")
+
+            general_timer.__exit__()
+            print(f"Total time elapsed: {general_timer.interval} s")
             
     general_timer.__exit__()
     print(f"Total time elapsed: {general_timer.interval} s")

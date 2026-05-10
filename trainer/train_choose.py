@@ -1,8 +1,9 @@
 import torch
 from torch import nn, Tensor
 from typing import List, Tuple, Union, Callable, Iterable
-from .algorithms import train_sgd_auto, train_mixed_newton_levenb_marq,train_ls
-
+from .algorithms import train_sgd_auto, train_mixed_newton_levenb_marq,train_ls, \
+        train_sgd_manual, train_mixed_newton_levenb_marq_manual
+import os
 
 OptionalInt = Union[int, None]
 OptionalStr = Union[str, None]
@@ -46,6 +47,8 @@ def train(model: nn.Module, train_dataset: DataLoaderType, loss_fn: LossFnType, 
             Defaults is "None".
         train_type - flag, that shows which algorithm to exploit in training.
             train_type == 'mnm_lev_marq', - corresponds to Levenberg–Marquardt algorithm on base of Mixed Newton Method,
+            train_type == 'mnm_lev_marq_manual', - corresponds to Levenberg–Marquardt algorithm on base of 
+                Mixed Newton Method (manual implementation),
             train_type == 'sgd_auto', - corresponds to Stochastic Gradient Descent, implemented by means of loss.backward() function.
         save_path (str, optional): Folder path to save function product. Defaults to "None".
         exp_name (str, optional): Name of simulation, which is reflected in function product names. Defaults to "None".
@@ -59,10 +62,6 @@ def train(model: nn.Module, train_dataset: DataLoaderType, loss_fn: LossFnType, 
     Returns:
         Learning curve (list), containing quality criterion calculated each epoch of learning.
     """
-    if save_path is None:
-        save_path = ''
-    else:
-        save_path += '/'
     if exp_name is None:
         exp_name = ''
     else:
@@ -75,19 +74,27 @@ def train(model: nn.Module, train_dataset: DataLoaderType, loss_fn: LossFnType, 
 
     save_signals = True
     
-    torch.save(model.state_dict(), save_path+'weights_init'+exp_name)
+    torch.save(model.state_dict(), os.path.join(save_path, 'weights_init.pt'))
 
     if train_type == 'sgd_auto':
         learning_curve, best_criterion = train_sgd_auto(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
                                                         quality_criterion, batch_to_tensors, config_train, save_path, exp_name,
                                                         save_every, weight_names)
+    elif train_type == 'sgd_manual':
+        learning_curve, best_criterion = train_sgd_manual(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
+                                                          quality_criterion, batch_to_tensors, config_train, chunk_num, 
+                                                          save_path, exp_name, save_every, save_signals, weight_names)
     elif train_type == 'mnm_lev_marq':
         learning_curve, best_criterion = train_mixed_newton_levenb_marq(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
                                                                         quality_criterion, batch_to_tensors, config_train, chunk_num, 
                                                                         save_path, exp_name, save_every, save_signals, weight_names)
+    elif train_type == 'mnm_lev_marq_manual':
+        learning_curve, best_criterion = train_mixed_newton_levenb_marq_manual(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
+                                                                        quality_criterion, batch_to_tensors, config_train, chunk_num, 
+                                                                        save_path, exp_name, save_every, save_signals, weight_names)
     elif train_type == 'ls':
         learning_curve, best_criterion = train_ls(model, train_dataset, validate_dataset, test_dataset, loss_fn, 
-                                                                        quality_criterion, batch_to_tensors, chunk_num, 
+                                                                        quality_criterion, batch_to_tensors, config_train, chunk_num, 
                                                                         save_path, exp_name, weight_names)
 
     else:

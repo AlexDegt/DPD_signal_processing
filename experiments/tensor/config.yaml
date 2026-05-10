@@ -1,0 +1,40 @@
+# Simulation description
+trial_descript: Training of 1D Chebyshev polynomial-based model
+# If trial_name == 'None', then name to the experiment is given automatically,
+# otherwise it is set name set by user 
+# trial_name: 1_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm
+trial_name: mnm_rank_3_12_pow_dim_8_param_9_delays_reg_1e_p18
+# trial_name: test
+# Pre-trained parameters
+param_path: None
+# Simulation parameters
+# Number of parameters per power dimension. For single-dimensional model it equals 1
+pow_param_num: 12
+# Chebyshev polynomial order
+param_num: 8 # 12
+rank: 3
+# Model is parallel Chebyshev polynomials, summed at the output
+# Each polynomail is fed by the signals x_n, delayd by delay
+# from the range [-delay_num, delay_num].
+delay_num: 4 # 10
+batch_size: 1
+# chunk_num is important parameter, which allows to divide whole signal
+# into chunk_num blocks. LS method is implemented to accumulate 
+# hessian and gradient along the whole signal length and save GPU memory.
+# Increase this parameter if you obtain out of memory error.
+chunk_num: 31
+dtype: complex128
+device: "cuda:3"
+# dtype: complex64
+# Path to the folder with data
+data_path: '/home/alex-degt/DPD_SIC_signal_processing/data/single_band_dynamic'
+# Allow to overwrite folder with saved results or not
+overwrite_file: True
+
+# Algorithm parameters 
+# train_type: ls # LS-solution
+# train_type: sgd_auto # SGD
+train_type: mnm_lev_marq_manual # Mixed Newton with Levenberg-Marquardt adaptive regularization control
+epochs: 1500 # Used in SGD and Mixed Newton
+lr: 1 # Used only in SGD
+betas: [0.9, 0.9] # Used only in SGD

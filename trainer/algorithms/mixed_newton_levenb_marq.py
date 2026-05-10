@@ -3,7 +3,7 @@ from torch import nn, Tensor
 from typing import Tuple, Union, Callable, List
 import numpy as np
 
-import sys
+import sys, os
 sys.path.append('../../')
 
 from utils import Timer
@@ -203,17 +203,17 @@ def train_mixed_newton_levenb_marq(model: nn.Module, train_dataset: DataLoaderTy
 
             if criterion_val_test < best_criterion_test:
                 best_criterion_test = criterion_val_test
-                torch.save(model.state_dict(), save_path+'weights_best_test'+exp_name)
+                torch.save(model.state_dict(), os.path.join(save_path, 'weights_best.pt'))
             if epoch % save_every == 0:
-                np.save(save_path + f'lc_train{exp_name}.npy', np.array(learning_curve_train))
-                np.save(save_path + f'lc_test{exp_name}.npy', np.array(learning_curve_test))
-                np.save(save_path + f'lc_validate{exp_name}.npy', np.array(learning_curve_validate))
-                np.save(save_path + f'lc_qcrit_train{exp_name}.npy', np.array(learning_curve_train_qcrit))
-                np.save(save_path + f'lc_qcrit_test{exp_name}.npy', np.array(learning_curve_test_qcrit))
-                np.save(save_path + f'lc_qcrit_validate{exp_name}.npy', np.array(learning_curve_validate_qcrit))
-                np.save(save_path + f'grad_norm{exp_name}.npy', np.array(grad_norm_curve))
-                np.save(save_path + f'param_norm{exp_name}.npy', np.array(weights_norm_curve))
-                np.save(save_path + f'regular{exp_name}.npy', np.array(reg_param_curve))
+                np.save(os.path.join(save_path, f'lc_train{exp_name}.npy'), np.array(learning_curve_train))
+                np.save(os.path.join(save_path, f'lc_test{exp_name}.npy'), np.array(learning_curve_test))
+                np.save(os.path.join(save_path, f'lc_validate{exp_name}.npy'), np.array(learning_curve_validate))
+                np.save(os.path.join(save_path, f'lc_qcrit_train{exp_name}.npy'), np.array(learning_curve_train_qcrit))
+                np.save(os.path.join(save_path, f'lc_qcrit_test{exp_name}.npy'), np.array(learning_curve_test_qcrit))
+                np.save(os.path.join(save_path, f'lc_qcrit_validate{exp_name}.npy'), np.array(learning_curve_validate_qcrit))
+                np.save(os.path.join(save_path, f'grad_norm{exp_name}.npy'), np.array(grad_norm_curve))
+                np.save(os.path.join(save_path, f'param_norm{exp_name}.npy'), np.array(weights_norm_curve))
+                np.save(os.path.join(save_path, f'regular{exp_name}.npy'), np.array(reg_param_curve))
         timer.__exit__()
         if epoch % print_every == 0:
             print(f"Epoch is {epoch + 1}, " + \

@@ -3,5 +3,6 @@ from .encoder import Encoder
 from .activation import CTanh, CReLU, CPReLU, configure_activates
 from .batchnorm import ScaleShift, Identity, ComplexBatchNorm1d
 from .feature_extract import FEAT_EXTR
-from .Cheby2D import Cheby2D
+from .Cheby2D import Cheby2D, RrankCheby2D
+from .LinSpline import LinearSpline2D
 from .delay import Delay

@@ -1,0 +1,10 @@
+\babel@toc {american}{}\relax 
+\beamer@sectionintoc {1}{Introduction}{3}{0}{1}
+\beamer@subsectionintoc {1}{1}{In-band full-duplex systems idea}{3}{0}{1}
+\beamer@subsectionintoc {1}{2}{Self-interference cancellation issue}{4}{0}{1}
+\beamer@sectionintoc {2}{Adaptive compensation of self-interference}{5}{0}{2}
+\beamer@subsectionintoc {2}{1}{Non-linear interference model}{5}{0}{2}
+\beamer@subsectionintoc {2}{2}{Mixed Newton method}{6}{0}{2}
+\beamer@subsectionintoc {2}{3}{Experimental setup}{7}{0}{2}
+\beamer@subsectionintoc {2}{4}{Simulation results}{8}{0}{2}
+\beamer@sectionintoc {3}{Conclusions and further work}{11}{0}{3}

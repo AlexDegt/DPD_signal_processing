@@ -1,0 +1,48 @@
+# Simulation description
+trial_descript: Training of 2D Chebyshev polynomial-based model based on R-rank tensor decomposition
+# If trial_name == 'None', then name to the experiment is given automatically,
+# otherwise it is set name set by user 
+# trial_name: None
+# trial_name: rank_1_10_pow_dim_lin_scale_corr_fraq_del_aligned_gain_mw_m16_0dBm
+# trial_name: 2d_10_pow_dim_22_param_9_delays
+# trial_name: rank_6_10_pow_dim_22_param_9_delays_continue_ls
+trial_name: rank_1_10_pow_dim_22_param_9_delays_manual_1500epochs
+# trial_name: rank_6_10_pow_dim_22_param_9_delays_manual_200epochs
+# trial_name: rank_6_10_pow_dim_22_param_9_delays_manual
+# Simulation parameters
+# Number of parameters per power dimension. For single-dimensional model it equals 1
+pow_param_num: 10 # 10
+# Chebyshev polynomal order
+param_num: 22 # 22
+# R-rank tensor decomposition rank
+rank: 1 # 6
+# Model is parallel Chebyshev polynomials, summed at the output
+# Each polynomail is fed by the signals x_n, delayd by delay
+# from the range [-delay_num, delay_num].
+# delay_num: 4
+delay_num: 4 # 4
+batch_size: 1
+# chunk_num is important parameter, which allows to divide whole signal
+# into chunk_num blocks. LS method is implemented to accumulate 
+# hessian and gradient along the whole signal length and save GPU memory.
+# Increase this parameter if you obtain out of memory error.
+chunk_num: 2
+dtype: complex128
+device: "cuda:5"
+# dtype: complex64
+# Path to the folder with data
+data_path: '../../data/single_band_dynamic'
+# Path to load model parameters from
+param_path: None
+# param_path: rank_6_10_pow_dim_22_param_9_delays/weights_best_test_rank_6_10_pow_dim_22_param_9_delays.pt
+# Allow to overwrite folder with saved results or not
+overwrite_file: True
+
+# Algorithm parameters 
+# train_type: ls # LS-solution
+# train_type: sgd_auto # SGD
+train_type: mnm_lev_marq_manual # Mixed Newton with Levenberg-Marquardt adaptive regularization control
+epochs: 1500 # Used in SGD and Mixed Newton
+lr: 0.00002 # Used only in SGD
+betas: [0.9, 0.9] # Used only in SGD
+accum_grad: False
