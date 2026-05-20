@@ -67,7 +67,7 @@ def train_ls(model: nn.Module, train_dataset: DataLoaderType, validate_dataset: 
     # For debugging epochs could be increased
     epochs = 1
 
-    reg = config_train["reg"]
+    reg = float(config_train["reg"])
 
     # Initialize Mixed-Newton oracle
     SICOracle = Oracle(model, loss_fn)

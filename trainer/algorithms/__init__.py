@@ -1,5 +1,5 @@
 from .mixed_newton_levenb_marq import train_mixed_newton_levenb_marq
-from .sgd_auto import train_sgd_auto
+from .sgd_auto import train_sgd_auto, train_sgd_auto_block_est
 from .ls import train_ls
 from .sgd_manual import train_sgd_manual
 from .complex_optim import ComplexAdam

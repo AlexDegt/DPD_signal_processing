@@ -240,3 +240,97 @@ def train_sgd_auto(model: nn.Module, train_dataset: DataLoaderType, validate_dat
     print(f"Total time elapsed: {general_timer.interval} s")
 
     return learning_curve_test, best_criterion_test
+
+def train_sgd_auto_block_est(model: nn.Module, train_dataset: DataLoaderType, validate_dataset: DataLoaderType,
+              test_dataset: DataLoaderType, loss_fn: LossFnType, quality_criterion: LossFnType, 
+              batch_to_tensors: BatchTensorType, config_train: dict, save_path: OptionalStr = None, exp_name: OptionalStr = None, 
+              save_every: OptionalInt = None, weight_names: StrOrList = None):
+    """
+        Function optimizes model parameters using common stochastic gradient descent, loss.backward() method.
+        The same as train_sgd_auto, but with performance estimation on mini-blocks.
+    """
+    
+    epochs = config_train["epochs"]
+    lr = config_train["lr"]
+    betas = config_train["betas"]
+
+    if save_every is None:
+        save_every = epochs - 1
+
+    # Assign requires_grad of parameters, which are not within the weight_names to False
+    for name, p in model.named_parameters():
+        if name not in weight_names:
+            p.requires_grad = False
+
+    lrs = []
+    learning_curve_train_qcrit = []
+    grad_norm_curve = []
+    weights_norm_curve = []
+    optimizer = ComplexAdam(model.parameters(), lr=lr, betas=betas, mode="full")
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1)
+    # scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-0, end_factor=1e-3, total_iters=5340 * epochs)
+
+    print_every = 1
+    timer = Timer()
+    general_timer = Timer()
+    general_timer.__enter__()
+
+    best_criterion_train = 0
+    for epoch in range(epochs):
+        timer.__enter__()
+        for j_batch, batch in enumerate(train_dataset):
+            if weight_names != []:
+                optimizer.zero_grad()
+                loss_val = loss_fn(model, batch)
+                loss_val.backward(create_graph=False)
+                optimizer.step()
+                scheduler.step()
+    
+            # Track NMSE values on validation and test dataset and save gradient, model parameters norm history
+            with torch.no_grad():
+                if epoch % save_every == 0:
+
+                    # Track algorithm parameters
+                    if weight_names != []:
+                        curr_params = torch.cat([p.view(-1) for p in model.parameters() if p.requires_grad == True], dim=0)
+                        grad = torch.cat([p.grad.view(-1) for p in model.parameters() if p.requires_grad == True], dim=0)
+                        grad_distr = [torch.norm(p.grad).item() for p in model.parameters() if p.requires_grad == True]
+                        mu = scheduler.get_last_lr()[0]
+                        grad_norm = torch.norm(grad).item()
+                        grad_norm_curve.append(grad_norm)
+                        weights_norm_curve.append(torch.norm(curr_params).item())
+                        lrs.append(mu)
+                    else:
+                        grad_distr = []
+                        grad_norm = 0
+                        mu = 0
+
+                    criterion_val_train = quality_criterion(model, batch)
+
+                    learning_curve_train_qcrit.append(criterion_val_train)
+
+                    if criterion_val_train < best_criterion_train:
+                        best_criterion_train = criterion_val_train
+                        torch.save(model.state_dict(), os.path.join(save_path, 'weights_best.pt'))
+
+                    np.save(os.path.join(save_path, f'lc_qcrit_train{exp_name}.npy'), np.array(learning_curve_train_qcrit))
+                    np.save(os.path.join(save_path, f'grad_norm{exp_name}.npy'), np.array(grad_norm_curve))
+                    np.save(os.path.join(save_path, f'grad_distr{exp_name}.npy'), np.array(grad_distr))
+                    np.save(os.path.join(save_path, f'param_norm{exp_name}.npy'), np.array(weights_norm_curve))
+                    np.save(os.path.join(save_path, f'lrs{exp_name}.npy'), np.array(lrs))
+            timer.__exit__()
+            if epoch % print_every == 0:
+                print(f"Epoch is {epoch + 1}, " + \
+                    f"Batch is {j_batch + 1}, " + \
+                    # f"loss_train = {loss_val_train:.8f}, " + \
+                    f"quality_criterion_train = {criterion_val_train:.8f} dB, stepsize = {mu:.6e}, " + \
+                    f"|grad| = {grad_norm:.4e}, time elapsed: {timer.interval:.2e}")
+
+            general_timer.__exit__()
+            print(f"Total time elapsed: {general_timer.interval} s")
+            
+    general_timer.__exit__()
+    print(f"Total time elapsed: {general_timer.interval} s")
+
+    return learning_curve_train_qcrit, best_criterion_train

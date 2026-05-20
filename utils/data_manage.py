@@ -110,9 +110,11 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
         # target_tensor /= scales_target[-1]
         # target_tensor /= target_tensor.abs().max()
         
-        input.append(input_tensor / input_tensor.abs().max().item())
-        # target.append(target_tensor / target_tensor.abs().max().item())
+        # input.append(input_tensor / input_tensor.abs().max().item())
+        input.append(input_tensor)
+        # target.append(target_tensor / input_tensor.abs().max().item())
         target.append(target_tensor)
+        
 
     pa_list = [pa_pow * torch.ones(1, 1, input[0].numel()) for pa_pow in pa_powers]
     pa_powers = torch.cat(pa_list, dim=1).to(device).to(dtype)
@@ -125,8 +127,10 @@ def dynamic_dataset_prepare(data_path: ListOfStr, pa_powers: ListOfFloat, dtype:
     target = torch.cat(target, dim=1)
 
     # Scale whole input signal to some interval
-    input /= input.abs().max()
-    # target /= target.abs().max()
+    input_scale = input.abs().max()
+    if input_scale > 0:
+        input = input / input_scale
+        target = target / input_scale
 
     input = torch.cat([input[:, None, ...], pa_powers[:, None, ...]], dim=1)
 
@@ -606,6 +610,21 @@ def dynamic_permute_dataset_prepare(
     pa_powers_sel = np.array(pa_powers)[signal_ind]
     signal_num = len(signal_ind)
 
+    # data_path_all = np.array(data_path, dtype=object).tolist()
+    # scale_inp_max = 0
+    # scale_target_max = 0
+    # for path in data_path_all:
+    #     mat = loadmat(path)
+
+    #     tx = torch.tensor(mat['TX'][0, :], dtype=dtype, device=device).view(1, 1, -1)#[:, :, 1104:-1104]
+    #     paout = torch.tensor(mat['PAout'][0, :], dtype=dtype, device=device).view(1, 1, -1)#[:, :, 1104:-1104]
+    #     target = (paout - tx)
+
+    #     if scale_inp_max < tx.abs().max().item():
+    #         scale_inp_max = tx.abs().max().item()
+    #     if scale_target_max < target.abs().max().item():
+    #         scale_target_max = target.abs().max().item()
+
     # -----------------------------
     # Загрузка выбранных K сигналов
     # input_list  -> список [1,1,N]
@@ -619,24 +638,29 @@ def dynamic_permute_dataset_prepare(
     for path in data_path_sel:
         mat = loadmat(path)
 
-        tx = torch.tensor(mat['TX'][0, :], dtype=dtype, device=device).view(1, 1, -1)
-        paout = torch.tensor(mat['PAout'][0, :], dtype=dtype, device=device).view(1, 1, -1)
-        target = paout - tx
+        tx = torch.tensor(mat['TX'][0, :], dtype=dtype, device=device).view(1, 1, -1)#[:, :, 1104:-1104]
+        paout = torch.tensor(mat['PAout'][0, :], dtype=dtype, device=device).view(1, 1, -1)#[:, :, 1104:-1104]
+        target = (paout - tx)
 
         scales.append(tx.abs().max().item())
         scales_target.append(target.abs().max().item())
 
-        input_list.append(tx / tx.abs().max().item())
-        target_list.append(target / target.abs().max().item())
+        # ACLR сильно зависит от нормировки! Не забыть обдумать!
+        # input_list.append(tx / 30000) #/ tx.abs().max().item())
+        input_list.append(tx) #/ tx.abs().max().item())
+        # input_list.append(tx / tx.abs().max().item())
+        # target_list.append(target / 30000) #/ target.abs().max().item())
+        target_list.append(target)
 
     # [1, K, N]
     input_tensor = torch.cat(input_list, dim=1)
     target_tensor = torch.cat(target_list, dim=1)
 
     # Масштабируем вход по глобальному максимуму среди выбранных K сигналов
-    # input_scale = input_tensor.abs().max()
-    # if input_scale > 0:
-    #     input_tensor = input_tensor / input_scale
+    input_scale = input_tensor.abs().max()
+    if input_scale > 0:
+        input_tensor = input_tensor / input_scale
+        target_tensor = target_tensor / input_scale
 
     # Сдвиг target при необходимости
     if delay_d is not None and delay_d != 0:
@@ -646,8 +670,8 @@ def dynamic_permute_dataset_prepare(
     # Формируем признак мощности
     # pa_feature shape = [1, K, N]
     # -----------------------------
-    pa_min = np.min(np.abs(pa_powers_sel))
-    pa_max = np.max(np.abs(pa_powers_sel))
+    pa_min = np.min(np.abs(pa_powers))
+    pa_max = np.max(np.abs(pa_powers))
     pa_den = pa_max - pa_min
 
     pa_feature_list = []
@@ -705,40 +729,98 @@ def dynamic_permute_dataset_prepare(
         x_subset: [1, 2, K, L]
         y_subset: [1, K, L]
 
-        Нужно:
-        - склеить K сигналов по времени
-        - затем unfold по block_size
+        Режем каждый сигнал отдельно.
+        Не допускаем, чтобы контекст pad_zeros залезал в соседний сигнал.
         """
-        # -> [1, 2, K*L]
-        x_concat = x_subset.view(1, 2, -1)
-        # -> [1, 1, K*L]
-        y_concat = y_subset.view(1, 1, -1)
 
-        # block_size по умолчанию = весь train кусок
-        local_block_size = block_size if block_size is not None else x_concat.shape[-1]
+        # [K, 2, L]
+        x_sigs = x_subset[0].permute(1, 0, 2).contiguous()
 
-        # padding по краям для входа
-        x_concat = F.pad(x_concat, (pad_zeros, pad_zeros))
+        # [K, 1, L]
+        y_sigs = y_subset[0].unsqueeze(1).contiguous()
 
-        # padding для корректного unfold
-        step_x = int(local_block_size)
-        pad_unfold_input = (step_x + 2 * pad_zeros - x_concat.size(-1) % step_x) % step_x
-        x_concat = F.pad(x_concat, (0, pad_unfold_input))
+        local_block_size = block_size if block_size is not None else x_sigs.shape[-1]
 
-        step_y = int(local_block_size)
-        pad_unfold_target = (step_y - y_concat.size(-1) % step_y) % step_y
-        y_concat = F.pad(y_concat, (0, pad_unfold_target))
+        # ВАЖНО: padding отдельно для каждого сигнала
+        x_sigs_pad = F.pad(x_sigs, (pad_zeros, pad_zeros))
 
-        # unfold
-        # x: [num_blocks, 2, block_size + 2*pad_zeros]
-        # y: [num_blocks, 1, block_size]
-        x_blocks = x_concat.unfold(2, local_block_size + 2 * pad_zeros, local_block_size)[0].permute(1, 0, 2)
-        y_blocks = y_concat.unfold(2, local_block_size, local_block_size)[0].permute(1, 0, 2)
+        # x_blocks: [K, 2, M, block_size + 2*pad_zeros]
+        x_blocks = x_sigs_pad.unfold(
+            dimension=-1,
+            size=local_block_size + 2 * pad_zeros,
+            step=local_block_size
+        )
+
+        # y_blocks: [K, 1, M, block_size]
+        y_blocks = y_sigs.unfold(
+            dimension=-1,
+            size=local_block_size,
+            step=local_block_size
+        )
+
+        M = min(x_blocks.shape[2], y_blocks.shape[2])
+        x_blocks = x_blocks[:, :, :M, :]
+        y_blocks = y_blocks[:, :, :M, :]
+
+        # [K, 2, M, W] -> [K*M, 2, W]
+        x_blocks = x_blocks.permute(0, 2, 1, 3).reshape(
+            -1,
+            2,
+            local_block_size + 2 * pad_zeros
+        )
+
+        # [K, 1, M, B] -> [K*M, 1, B]
+        y_blocks = y_blocks.permute(0, 2, 1, 3).reshape(
+            -1,
+            1,
+            local_block_size
+        )
 
         ds = (x_blocks, y_blocks)
         ds = ResampleDataset(ds, batch_size=batch_size, aggregate_power="concat")
         ds = torch.utils.data.DataLoader(ds, batch_size=None)
+
         return ds
+
+    # def make_train_loader(x_subset: torch.Tensor, y_subset: torch.Tensor):
+    #     """
+    #     x_subset: [1, 2, K, L]
+    #     y_subset: [1, K, L]
+
+    #     Нужно:
+    #     - склеить K сигналов по времени
+    #     - затем unfold по block_size
+    #     """
+    #     # -> [1, 2, K*L]
+    #     x_concat = x_subset.view(1, 2, -1)
+    #     # -> [1, 1, K*L]
+    #     y_concat = y_subset.view(1, 1, -1)
+
+    #     # block_size по умолчанию = весь train кусок
+    #     local_block_size = block_size if block_size is not None else x_concat.shape[-1]
+
+    #     # padding по краям для входа
+    #     x_concat = F.pad(x_concat, (pad_zeros, pad_zeros))
+
+    #     # padding для корректного unfold
+    #     # step_x = int(local_block_size)
+    #     # pad_unfold_input = (step_x + 2 * pad_zeros - x_concat.size(-1) % step_x) % step_x
+    #     # x_concat = F.pad(x_concat, (0, pad_unfold_input))
+
+    #     # step_y = int(local_block_size)
+    #     # pad_unfold_target = (step_y - y_concat.size(-1) % step_y) % step_y
+    #     # y_concat = F.pad(y_concat, (0, pad_unfold_target))
+
+    #     # unfold
+    #     # x: [num_blocks, 2, block_size + 2*pad_zeros]
+    #     # y: [num_blocks, 1, block_size]
+    #     x_blocks = x_concat.unfold(2, local_block_size + 2 * pad_zeros, local_block_size)[0].permute(1, 0, 2)
+    #     y_blocks = y_concat.unfold(2, local_block_size, local_block_size)[0].permute(1, 0, 2)
+
+    #     ds = (x_blocks, y_blocks)
+    #     ds = ResampleDataset(ds, batch_size=batch_size, aggregate_power="concat")
+    #     ds = torch.utils.data.DataLoader(ds, batch_size=None)
+    #     return ds
 
     def make_eval_loader(x_subset: torch.Tensor, y_subset: torch.Tensor):
         """

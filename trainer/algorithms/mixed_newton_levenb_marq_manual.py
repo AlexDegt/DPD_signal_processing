@@ -166,7 +166,8 @@ def train_mixed_newton_levenb_marq_manual(model: nn.Module, train_dataset: DataL
         # Calculate and apply Levenberg-Marquardt algorithm step with mixed hessian
         flag = True
         while flag:
-            hess_inv = torch.linalg.pinv(hess + alpha*maxH*regul + 1e+18, rcond=1e-40, hermitian=True)
+            # hess_inv = torch.linalg.pinv(hess + alpha*maxH*regul + 1e+18, rcond=1e-40, hermitian=True)
+            hess_inv = torch.linalg.pinv(hess + alpha*maxH*regul + 0, rcond=1e-40, hermitian=True)
             direction = -1. * hess_inv @ grad     
             x = model.get_flat_params()
             # x = SICOracle.get_flat_params(name_list=weight_names)
